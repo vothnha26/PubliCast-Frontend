@@ -3,54 +3,66 @@
   "login": "Đăng nhập",
   "logout": "Đăng xuất",
   "nav": {
-    "dashboard": "Tổng quan",
-    "planner": "Lịch xuất bản",
-    "smartlinks": "SmartLinks",
-    "analytics": "Báo cáo & Phân tích",
-    "team": "Cộng tác đội ngũ"
+    "groups": {
+      "analytics": "PHÂN TÍCH",
+      "tools": "CÔNG CỤ"
+    },
+    "analytics": "Phân tích",
+    "management": "Quản lý",
+    "team": "Đội ngũ",
+    "reports": "Báo cáo",
+    "content_planner": "Lịch nội dung",
+    "approval_requests": "Yêu cầu duyệt",
+    "assets": "Tài nguyên",
+    "ads": "Quảng cáo"
   },
   "header": {
-    "search": "Tìm kiếm chiến dịch, bài viết...",
-    "quick_create": "Tạo bài mới",
-    "profile": "Hồ sơ cá nhân",
-    "settings": "Cài đặt",
-    "toggle_theme": "Chuyển chế độ Sáng/Tối"
-  },
-  "planner_page": {
-    "title": "Tổng quan Workspace & Lịch xuất bản",
-    "desc": "Bảng điều khiển quản lý mạng xã hội PubliCast."
-  },
-  "plan": {
-    "pro_title": "Gói PubliCast Pro",
-    "pro_desc": "Quản lý tối đa 10 kênh mạng xã hội",
-    "upgrade": "Nâng cấp gói"
-  },
-  "settings": {
-    "title": "Cài đặt & Cấu hình",
-    "desc": "Quản lý không gian làm việc, tài khoản và tùy chỉnh",
-    "sections": {
-      "account_workspace": "Tài khoản & Workspace",
-      "users_billing": "Thành viên & Thanh toán",
-      "preferences": "Tùy chỉnh hệ thống",
-      "support": "Hỗ trợ & Trợ giúp"
-    },
-    "items": {
-      "profile": "Hồ sơ cá nhân",
-      "workspace_settings": "Cài đặt Workspace",
-      "team_members": "Danh sách thành viên",
-      "billing_plans": "Gói cước & Thanh toán",
-      "general_preferences": "Tùy chọn chung",
-      "help_center": "Trung tâm trợ giúp"
+    "brand": "Social Orchestrator",
+    "search": "Tìm kiếm...",
+    "upgrade": "Nâng cấp",
+    "workspace_mode": "Chế độ Workspace",
+    "toggle_theme": "Chuyển chế độ Sáng/Tối",
+    "top_nav": {
+      "dashboard": "Tổng quan",
+      "media_library": "Thư viện phương tiện",
+      "inbox": "Hộp thư",
+      "planner": "Lịch xuất bản",
+      "smart_links": "Smart Links"
     }
   },
-  "bento": {
-    "total_posts": "Bài viết đã lên lịch",
-    "total_posts_desc": "Đã lên lịch trong tháng này",
-    "engagement": "Tỷ lệ tương tác trung bình",
-    "engagement_desc": "So với tuần trước",
-    "higher": "Cao hơn",
-    "active_channels": "Kênh mạng xã hội đã kết nối",
-    "active_channels_desc": "YouTube, Facebook, LinkedIn...",
-    "upcoming": "Bài viết chuẩn bị xuất bản"
+  "plan": {
+    "hub_title": "B2B HUB PRO",
+    "enterprise_plan": "Enterprise Plan",
+    "view_status": "Xem trạng thái gói"
+  },
+  "settings": {
+    "title": "Settings",
+    "desc": "Cấu hình hệ thống & Workspace",
+    "sections": {
+      "system": "HỆ THỐNG",
+      "administration": "QUẢN TRỊ",
+      "preferences": "TÙY CHỈNH",
+      "help": "TRỢ GIÚP"
+    },
+    "items": {
+      "workspace": "Workspace",
+      "connections": "Kết nối",
+      "brand": "Thương hiệu",
+      "user": "Người dùng",
+      "billing": "Thanh toán",
+      "tasks": "Nhiệm vụ",
+      "language": "Ngôn ngữ",
+      "account": "Tài khoản",
+      "help_center": "Trợ giúp",
+      "support": "Hỗ trợ",
+      "news": "Tin tức"
+    }
+  },
+  "dashboard": {
+    "welcome_title": "Chào mừng đến với Bảng điều khiển",
+    "welcome_desc": "Kết nối các tài khoản mạng xã hội chuyên nghiệp để bắt đầu điều phối truyền thông doanh nghiệp và theo dõi hiệu suất thời gian thực.",
+    "connect_data_source": "Kết nối nguồn dữ liệu",
+    "view_documentation": "Xem tài liệu hướng dẫn",
+    "live_stream_active": "LIVE STREAM ACTIVE"
   }
 }

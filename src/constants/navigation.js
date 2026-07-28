@@ -1,78 +1,90 @@
 import {
-  LayoutDashboard,
-  Calendar,
-  Share2,
-  BarChart3,
-  Users,
-  Settings,
-  HelpCircle,
-  CreditCard,
-  UserCheck,
+  BarChart2,
   Sliders,
+  Users,
+  FileText,
+  Calendar,
+  CheckSquare,
+  Folder,
+  Target,
+  LayoutGrid,
+  Mail,
+  Link,
+  Briefcase,
+  Globe,
+  Palette,
+  CreditCard,
+  HelpCircle,
+  Headphones,
+  Newspaper,
+  User,
 } from "lucide-react"
 
-export const MAIN_NAV_ITEMS = Object.freeze([
-  {
-    id: "dashboard",
-    labelKey: "nav.dashboard",
-    path: "/workspace/planner",
-    icon: LayoutDashboard,
-  },
-  {
-    id: "planner",
-    labelKey: "nav.planner",
-    path: "/workspace/planner/calendar",
-    icon: Calendar,
-  },
-  {
-    id: "smartlinks",
-    labelKey: "nav.smartlinks",
-    path: "/manage/smartlinks",
-    icon: Share2,
-  },
+export const SIDEBAR_NAV_GROUPS = Object.freeze([
   {
     id: "analytics",
-    labelKey: "nav.analytics",
-    path: "/manage/reports",
-    icon: BarChart3,
+    titleKey: "nav.groups.analytics",
+    items: [
+      { id: "analytics", labelKey: "nav.analytics", path: "/workspace/planner", icon: BarChart2, activeDot: true },
+      { id: "management", labelKey: "nav.management", path: "/workspace/management", icon: Sliders },
+      { id: "team", labelKey: "nav.team", path: "/workspace/team", icon: Users },
+      { id: "reports", labelKey: "nav.reports", path: "/manage/reports", icon: FileText },
+    ],
   },
   {
-    id: "team",
-    labelKey: "nav.team",
-    path: "/workspace/team",
-    icon: Users,
+    id: "tools",
+    titleKey: "nav.groups.tools",
+    items: [
+      { id: "content_planner", labelKey: "nav.content_planner", path: "/workspace/planner/calendar", icon: Calendar },
+      { id: "approval_requests", labelKey: "nav.approval_requests", path: "/workspace/approvals", icon: CheckSquare },
+      { id: "assets", labelKey: "nav.assets", path: "/workspace/assets", icon: Folder },
+      { id: "ads", labelKey: "nav.ads", path: "/workspace/ads", icon: Target },
+    ],
   },
+])
+
+export const HEADER_TOP_NAV = Object.freeze([
+  { id: "dashboard", labelKey: "header.top_nav.dashboard", icon: LayoutGrid, path: "/workspace/planner" },
+  { id: "media_library", labelKey: "header.top_nav.media_library", icon: Folder, path: "/workspace/media" },
+  { id: "inbox", labelKey: "header.top_nav.inbox", icon: Mail, path: "/workspace/inbox" },
+  { id: "planner", labelKey: "header.top_nav.planner", icon: Calendar, path: "/workspace/planner/calendar" },
+  { id: "smart_links", labelKey: "header.top_nav.smart_links", icon: Link, path: "/manage/smartlinks" },
 ])
 
 export const SETTINGS_DRAWER_SECTIONS = Object.freeze([
   {
-    id: "account_workspace",
-    titleKey: "settings.sections.account_workspace",
+    id: "system",
+    titleKey: "settings.sections.system",
     items: [
-      { id: "profile", labelKey: "settings.items.profile", icon: UserCheck },
-      { id: "workspace_settings", labelKey: "settings.items.workspace_settings", icon: Settings },
+      { id: "workspace", labelKey: "settings.items.workspace", icon: Briefcase },
+      { id: "connections", labelKey: "settings.items.connections", icon: Link },
+      { id: "brand", labelKey: "settings.items.brand", icon: Palette },
     ],
   },
   {
-    id: "users_billing",
-    titleKey: "settings.sections.users_billing",
+    id: "administration",
+    titleKey: "settings.sections.administration",
     items: [
-      { id: "team_members", labelKey: "settings.items.team_members", icon: Users },
-      { id: "billing_plans", labelKey: "settings.items.billing_plans", icon: CreditCard },
+      { id: "user", labelKey: "settings.items.user", icon: User },
+      { id: "billing", labelKey: "settings.items.billing", icon: CreditCard },
+      { id: "tasks", labelKey: "settings.items.tasks", icon: CheckSquare },
     ],
   },
   {
     id: "preferences",
     titleKey: "settings.sections.preferences",
     items: [
-      { id: "general_preferences", labelKey: "settings.items.general_preferences", icon: Sliders },
+      { id: "language", labelKey: "settings.items.language", icon: Globe },
+      { id: "account", labelKey: "settings.items.account", icon: User },
     ],
   },
   {
-    id: "support",
-    titleKey: "settings.sections.support",
+    id: "help",
+    titleKey: "settings.sections.help",
     items: [
       { id: "help_center", labelKey: "settings.items.help_center", icon: HelpCircle },
+      { id: "support", labelKey: "settings.items.support", icon: Headphones },
+      { id: "news", labelKey: "settings.items.news", icon: Newspaper },
     ],
   },
 ])

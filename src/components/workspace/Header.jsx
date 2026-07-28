@@ -1,5 +1,7 @@
 import React from "react"
 import { useTranslation } from "react-i18next"
+import { NavLink } from "react-router-dom"
+import { HEADER_TOP_NAV } from "@/constants/navigation"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useDashboardStore } from "@/store/useDashboardStore"
 import { Input } from "@/components/ui/input"
@@ -11,7 +13,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { Search, Plus, Bell, Settings, LogOut, User } from "lucide-react"
+import { Search, Bell, ChevronDown, Settings, LogOut, Zap } from "lucide-react"
 
 export default function Header() {
   const { t } = useTranslation()
@@ -22,49 +24,84 @@ export default function Header() {
   const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : "U"
 
   return (
-    <header className="h-14 border-b bg-background/95 backdrop-blur px-6 flex items-center justify-between gap-4 shrink-0">
-      {/* Search Input */}
-      <div className="relative w-72">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+    <header className="h-14 border-b bg-background px-4 flex items-center justify-between gap-4 shrink-0 select-none">
+      {/* Left: Search input */}
+      <div className="relative w-64">
+        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
         <Input
           type="search"
           placeholder={t("header.search")}
-          className="pl-9 h-9 text-xs bg-muted/40 border-none shadow-none focus-visible:ring-1"
+          className="pl-8 h-8 text-xs bg-slate-100 dark:bg-slate-900 border-none shadow-none rounded-lg focus-visible:ring-1"
         />
       </div>
 
-      {/* Right Actions & User Profile */}
+      {/* Center: Top Icons Navigation */}
+      <div className="flex items-center gap-6">
+        {HEADER_TOP_NAV.map((nav) => {
+          const Icon = nav.icon
+          return (
+            <NavLink
+              key={nav.id}
+              to={nav.path}
+              className={({ isActive }) =>
+                `p-1.5 rounded-md transition-colors relative ${
+                  isActive
+                    ? "text-indigo-600 dark:text-indigo-400"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+                }`
+              }
+              title={t(nav.labelKey)}
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon className="h-4 w-4" />
+                  {isActive && (
+                    <span className="absolute -bottom-2.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-indigo-600 rounded-full" />
+                  )}
+                </>
+              )}
+            </NavLink>
+          )
+        })}
+      </div>
+
+      {/* Right: Upgrade button + Bell + Workspace selector */}
       <div className="flex items-center gap-3">
-        <Button size="sm" className="h-8 gap-1.5 text-xs">
-          <Plus className="h-3.5 w-3.5" />
-          <span>{t("header.quick_create")}</span>
+        <Button className="h-8 px-4 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs">
+          {t("header.upgrade")}
         </Button>
 
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+        {/* Bell icon with red indicator dot */}
+        <button className="relative p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
           <Bell className="h-4 w-4" />
-        </Button>
+          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-background" />
+        </button>
 
+        {/* Workspace mode profile dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatar} alt={user?.email} />
-                <AvatarFallback className="text-xs">{userInitial}</AvatarFallback>
+            <button className="flex items-center gap-2 border rounded-full pl-1.5 pr-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <Avatar className="h-5 w-5">
+                <AvatarImage src={user?.avatar} />
+                <AvatarFallback className="text-[10px] bg-slate-300 dark:bg-slate-700">
+                  {userInitial}
+                </AvatarFallback>
               </Avatar>
-            </Button>
+              <span>{t("header.workspace_mode")}</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            </button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem className="gap-2 cursor-pointer">
-              <User className="h-4 w-4" />
-              <span>{t("header.profile")}</span>
+            <DropdownMenuItem className="gap-2 text-xs cursor-pointer" onClick={openSettings}>
+              <Settings className="h-3.5 w-3.5" />
+              <span>{t("settings.title")}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer" onClick={openSettings}>
-              <Settings className="h-4 w-4" />
-              <span>{t("header.settings")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" onClick={logout}>
-              <LogOut className="h-4 w-4" />
+            <DropdownMenuItem
+              className="gap-2 text-xs cursor-pointer text-rose-600 focus:text-rose-600"
+              onClick={logout}
+            >
+              <LogOut className="h-3.5 w-3.5" />
               <span>{t("logout")}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -9,11 +9,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route element={<ProtectedRoute />}>
-        <Route element={<DashboardLayout />}>
-          <Route path="/workspace/planner" element={<PlannerPage />} />
-          <Route path="/workspace/planner/calendar" element={<PlannerPage />} />
-        </Route>
+      {/* TODO: TẠM BỎ ProtectedRoute để xem UI khi chưa có backend — nhớ khôi phục lại trước khi commit */}
+      <Route element={<DashboardLayout />}>
+        <Route path="/workspace/planner" element={<PlannerPage />} />
+        <Route path="/workspace/planner/calendar" element={<PlannerPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/workspace/planner" replace />} />
     </Routes>

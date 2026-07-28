@@ -1,56 +1,68 @@
 {
   "welcome": "Welcome to PubliCast",
   "login": "Login",
-  "logout": "Logout",
+  "logout": "Log out",
   "nav": {
-    "dashboard": "Dashboard",
-    "planner": "Planner",
-    "smartlinks": "SmartLinks",
-    "analytics": "Analytics & Reports",
-    "team": "Team Collaboration"
+    "groups": {
+      "analytics": "ANALYTICS",
+      "tools": "TOOLS"
+    },
+    "analytics": "Analytics",
+    "management": "Management",
+    "team": "Team",
+    "reports": "Reports",
+    "content_planner": "Content Planner",
+    "approval_requests": "Approval Requests",
+    "assets": "Assets",
+    "ads": "Ads"
   },
   "header": {
-    "search": "Search campaigns, posts...",
-    "quick_create": "Create New",
-    "profile": "My Profile",
-    "settings": "Settings",
-    "toggle_theme": "Toggle Dark/Light Mode"
-  },
-  "planner_page": {
-    "title": "Workspace Overview & Planner",
-    "desc": "PubliCast social media management dashboard canvas."
-  },
-  "plan": {
-    "pro_title": "PubliCast Pro Plan",
-    "pro_desc": "Manage up to 10 social channels",
-    "upgrade": "Upgrade Plan"
-  },
-  "settings": {
-    "title": "Settings & Configuration",
-    "desc": "Manage your workspace, account and preferences",
-    "sections": {
-      "account_workspace": "Account & Workspace",
-      "users_billing": "Users & Billing",
-      "preferences": "Preferences",
-      "support": "Support & Help"
-    },
-    "items": {
-      "profile": "User Profile",
-      "workspace_settings": "Workspace Settings",
-      "team_members": "Team Members",
-      "billing_plans": "Billing & Subscriptions",
-      "general_preferences": "General Preferences",
-      "help_center": "Help Center & Documentation"
+    "brand": "Social Orchestrator",
+    "search": "Search...",
+    "upgrade": "Upgrade",
+    "workspace_mode": "Workspace mode",
+    "toggle_theme": "Toggle Dark/Light Mode",
+    "top_nav": {
+      "dashboard": "Dashboard",
+      "media_library": "Media Library",
+      "inbox": "Inbox",
+      "planner": "Planner",
+      "smart_links": "Smart Links"
     }
   },
-  "bento": {
-    "total_posts": "Total Scheduled Posts",
-    "total_posts_desc": "Scheduled for this month",
-    "engagement": "Average Engagement Rate",
-    "engagement_desc": "Compared to last week",
-    "higher": "Higher",
-    "active_channels": "Connected Channels",
-    "active_channels_desc": "YouTube, Facebook, LinkedIn...",
-    "upcoming": "Upcoming Publications"
+  "plan": {
+    "hub_title": "B2B HUB PRO",
+    "enterprise_plan": "Enterprise Plan",
+    "view_status": "View Plan Status"
+  },
+  "settings": {
+    "title": "Settings",
+    "desc": "Workspace & System Configuration",
+    "sections": {
+      "system": "SYSTEM",
+      "administration": "ADMINISTRATION",
+      "preferences": "PREFERENCES",
+      "help": "HELP"
+    },
+    "items": {
+      "workspace": "Workspace",
+      "connections": "Connections",
+      "brand": "Brand",
+      "user": "User",
+      "billing": "Billing",
+      "tasks": "Tasks",
+      "language": "Language",
+      "account": "Account",
+      "help_center": "Help",
+      "support": "Support",
+      "news": "News"
+    }
+  },
+  "dashboard": {
+    "welcome_title": "Welcome to your Dashboard",
+    "welcome_desc": "Connect your professional social accounts to start orchestrating your enterprise media presence and tracking real-time performance.",
+    "connect_data_source": "Connect Data Source",
+    "view_documentation": "View Documentation",
+    "live_stream_active": "LIVE STREAM ACTIVE"
   }
 }
