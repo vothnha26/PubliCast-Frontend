@@ -17,33 +17,14 @@ import {
   Check,
   Globe,
   Settings,
-  ZoomIn,
-  Layers,
   RefreshCw,
-  Grid,
-  Bell,
   HardDrive,
-  ImageIcon,
-  Sparkles,
-  Lightbulb,
-  BarChart2,
-  Folder,
-  Users,
-  Star,
-  Clock,
-  GripVertical,
-  FileText,
-  MoveUpRight,
-  Info,
-  Upload,
-  CheckCircle2,
 } from "lucide-react"
 
 import { toast } from "sonner"
 import ImportSyncModal from "./ImportSyncModal"
-import GoogleDrivePickerModal from "./GoogleDrivePickerModal"
 
-export default function PlannerSubHeader({ onOpenNewPostModal }) {
+export default function PlannerSubHeader({ onOpenNewPostModal, showDrivePanel, setShowDrivePanel }) {
   const { t } = useTranslation()
   const [plannerTab, setPlannerTab] = useState("calendar")
   const {
@@ -73,14 +54,7 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
   const [isPlatformDropdownOpen, setIsPlatformDropdownOpen] = useState(false)
   const [isCalendarSettingsOpen, setIsCalendarSettingsOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
-  const [isDrivePickerOpen, setIsDrivePickerOpen] = useState(false)
-  const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false)
-  const [activeIntegrationTab, setActiveIntegrationTab] = useState("drive")
   const [pickerYear, setPickerYear] = useState(currentDate.getFullYear())
-
-  // Drive state inside popover
-  const [driveCurrentFolder, setDriveCurrentFolder] = useState(null)
-  const [driveSearchQuery, setDriveSearchQuery] = useState("")
 
   const PLANNER_SUB_TABS = [
     { id: "calendar", label: t("planner.sub_tabs.calendar") },
@@ -114,47 +88,6 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
   ]
 
-  const mockDriveFiles = [
-    {
-      id: "f1",
-      name: "Campaign_Mockup_2026.png",
-      type: "image",
-      size: "2.4 MB",
-      date: "12 Th10, 2026",
-      url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80",
-    },
-    {
-      id: "f2",
-      name: "Promo_Video_Final.mp4",
-      type: "video",
-      size: "45.8 MB",
-      date: "Vừa xong",
-      url: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=400&q=80",
-    },
-    {
-      id: "f3",
-      name: "Strategy_Briefing.pdf",
-      type: "pdf",
-      size: "842 KB",
-      date: "10 Th10, 2026",
-      url: null,
-    },
-    {
-      id: "f4",
-      name: "Product_Demo_4K.mov",
-      type: "video",
-      size: "128.5 MB",
-      date: "08 Th10, 2026",
-      url: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&q=80",
-    },
-  ]
-
-  const handleDriveDragStart = (e, file) => {
-    e.dataTransfer.setData("application/json", JSON.stringify(file))
-    e.dataTransfer.setData("text/plain", file.name)
-    e.dataTransfer.effectAllowed = "copy"
-  }
-
   const handleSelectMonth = (monthIndex) => {
     const newDate = new Date(currentDate)
     newDate.setFullYear(pickerYear)
@@ -167,7 +100,7 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
   return (
     <div className="pb-3 border-b border-border space-y-3">
       {/* 0. TOP SUB-NAV BAR (Auto-Scaling Sub-navigation Tabs) */}
-      <div className="border-b border-border/40 pb-1 px-1 text-sm select-none w-full">
+      <div className="border-b border-border/40 pb-1 px-1 text-sm w-full">
         <div className="flex items-center justify-between w-full overflow-x-auto no-scrollbar gap-2">
           {PLANNER_SUB_TABS.map((tab) => {
             const isActive = plannerTab === tab.id
@@ -234,7 +167,6 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
                 setIsPlatformDropdownOpen(false)
                 setIsFilterOpen(false)
                 setIsCalendarSettingsOpen(false)
-                setIsIntegrationsOpen(false)
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/60 bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all shadow-2xs group"
             >
@@ -329,7 +261,6 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
                 setIsDatePickerOpen(false)
                 setIsFilterOpen(false)
                 setIsCalendarSettingsOpen(false)
-                setIsIntegrationsOpen(false)
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all shadow-2xs font-semibold text-xs shrink-0"
             >
@@ -444,7 +375,6 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
                 setIsPlatformDropdownOpen(false)
                 setIsDatePickerOpen(false)
                 setIsCalendarSettingsOpen(false)
-                setIsIntegrationsOpen(false)
               }}
               className={`h-9 px-3 text-xs font-semibold gap-1.5 border-border shadow-2xs bg-card rounded-xl ${
                 activeFiltersCount > 0 ? "border-[hsl(var(--sidebar-primary))] text-[hsl(var(--sidebar-primary))]" : ""
@@ -568,237 +498,6 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
             )}
           </div>
 
-          {/* SLEEK BLACK ICON BUTTON 🖼️ (Integrations Popover - Drive / Canva / Ideas) */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setIsIntegrationsOpen(!isIntegrationsOpen)
-                setIsCalendarSettingsOpen(false)
-                setIsPlatformDropdownOpen(false)
-                setIsDatePickerOpen(false)
-                setIsFilterOpen(false)
-              }}
-              className="h-9 w-9 bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0"
-              title="Media Hub & Integrations (Google Drive, Canva, Ideas)"
-            >
-              <ImageIcon className="h-4 w-4 text-white" />
-            </button>
-
-            {/* INTEGRATIONS POPOVER */}
-            {isIntegrationsOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40 bg-black/5"
-                  onClick={() => setIsIntegrationsOpen(false)}
-                />
-
-                <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 z-50 animate-scale-in select-none text-left">
-                  {/* Header */}
-                  <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center font-bold text-xs shadow-xs">
-                        💎
-                      </div>
-                      <div>
-                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                          INTEGRATIONS & MEDIA HUB
-                        </h3>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                          Import and sync media directly
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setIsIntegrationsOpen(false)}
-                      className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {/* Tabs */}
-                  <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl">
-                    <button
-                      onClick={() => setActiveIntegrationTab("drive")}
-                      className={`py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
-                        activeIntegrationTab === "drive"
-                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                      }`}
-                    >
-                      <HardDrive className="h-3.5 w-3.5 text-blue-500" />
-                      <span>Drive</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveIntegrationTab("canva")}
-                      className={`py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
-                        activeIntegrationTab === "canva"
-                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                      }`}
-                    >
-                      <span className="w-3.5 h-3.5 rounded-full bg-[#00C4CC] text-white text-[9px] font-black flex items-center justify-center">
-                        C
-                      </span>
-                      <span>Canva</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveIntegrationTab("ideas")}
-                      className={`py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
-                        activeIntegrationTab === "ideas"
-                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
-                      }`}
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                      <span>Ideas</span>
-                    </button>
-                  </div>
-
-                  {/* Content Panels */}
-                  <div>
-                    {activeIntegrationTab === "drive" && (
-                      <div className="space-y-3 animate-fade-in text-left">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-300">
-                            <Folder className="h-3.5 w-3.5 text-blue-500" />
-                            <span
-                              className="hover:underline cursor-pointer"
-                              onClick={() => setDriveCurrentFolder(null)}
-                            >
-                              My Drive
-                            </span>
-                            {driveCurrentFolder && (
-                              <>
-                                <ChevronRight className="h-3 w-3 text-slate-400" />
-                                <span className="text-indigo-600 dark:text-indigo-400 truncate max-w-[100px]">
-                                  {driveCurrentFolder}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          <input
-                            type="text"
-                            placeholder="Tìm tệp Drive..."
-                            value={driveSearchQuery}
-                            onChange={(e) => setDriveSearchQuery(e.target.value)}
-                            className="px-2.5 py-1 text-[11px] rounded-lg border border-border bg-slate-50 dark:bg-slate-800 w-28 focus:w-36 transition-all focus:outline-none"
-                          />
-                        </div>
-
-                        {!driveCurrentFolder && (
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <button
-                              onClick={() => setDriveCurrentFolder("Social Media 2026")}
-                              className="p-2 rounded-xl border border-border bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors text-left group"
-                            >
-                              <Folder className="h-4 w-4 text-blue-500 group-hover:scale-110 transition-transform shrink-0" />
-                              <div className="truncate">
-                                <p className="text-[11px] font-bold text-foreground truncate">Social Media 2026</p>
-                                <p className="text-[9px] text-muted-foreground">12 tệp</p>
-                              </div>
-                            </button>
-                            <button
-                              onClick={() => setDriveCurrentFolder("Video Assets")}
-                              className="p-2 rounded-xl border border-border bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors text-left group"
-                            >
-                              <Folder className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform shrink-0" />
-                              <div className="truncate">
-                                <p className="text-[11px] font-bold text-foreground truncate">Video Assets</p>
-                                <p className="text-[9px] text-muted-foreground">8 tệp</p>
-                              </div>
-                            </button>
-                          </div>
-                        )}
-
-                        <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
-                          {mockDriveFiles
-                            .filter((f) => f.name.toLowerCase().includes(driveSearchQuery.toLowerCase()))
-                            .map((file) => (
-                              <div
-                                key={file.id}
-                                draggable={true}
-                                onDragStart={(e) => handleDriveDragStart(e, file)}
-                                className="p-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 hover:border-indigo-300 dark:hover:border-indigo-800 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing transition-all group"
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <GripVertical className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-400 shrink-0" />
-                                  {file.url ? (
-                                    <img
-                                      src={file.url}
-                                      alt={file.name}
-                                      className="w-8 h-8 rounded-lg object-cover shrink-0 border border-border"
-                                    />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-muted-foreground shrink-0">
-                                      <FileText className="h-3.5 w-3.5" />
-                                    </div>
-                                  )}
-                                  <div className="truncate">
-                                    <h5 className="text-[11px] font-bold text-foreground truncate group-hover:text-indigo-600">
-                                      {file.name}
-                                    </h5>
-                                    <p className="text-[9px] text-muted-foreground">
-                                      {file.size} • {file.date}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                                  Kéo vào Lịch
-                                </span>
-                              </div>
-                            ))}
-                        </div>
-
-                        <div className="p-2 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-[9px] font-extrabold tracking-wider uppercase flex items-center justify-center gap-1.5 rounded-xl shrink-0">
-                          <Info className="h-3 w-3 text-indigo-400 shrink-0" />
-                          <span>KÉO THẢ TỆP VÀO LỊCH ĐỂ THÊM BÀI ĐĂNG</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeIntegrationTab === "canva" && (
-                      <div className="space-y-4 animate-fade-in text-center py-2">
-                        <div className="w-16 h-16 mx-auto rounded-full bg-[#00C4CC]/10 text-[#00C4CC] flex items-center justify-center font-black text-xl">
-                          C
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black text-foreground uppercase">CONNECT CANVA</h4>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">Tạo và nhập trực tiếp hình ảnh thiết kế từ Canva vào Lịch bài đăng.</p>
-                        </div>
-                        <button
-                          onClick={() => setIsIntegrationsOpen(false)}
-                          className="w-full py-2 rounded-xl bg-[#00C4CC] hover:bg-[#00b2b9] text-white font-extrabold text-xs shadow-xs"
-                        >
-                          Kết nối Canva
-                        </button>
-                      </div>
-                    )}
-
-                    {activeIntegrationTab === "ideas" && (
-                      <div className="space-y-4 animate-fade-in text-center py-2">
-                        <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                          <Sparkles className="w-7 h-7" />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black text-foreground uppercase">AI CONTENT ASSISTANT</h4>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">Gợi ý tưởng bài viết sáng tạo tự động bằng Trí tuệ nhân tạo.</p>
-                        </div>
-                        <button
-                          onClick={() => setIsIntegrationsOpen(false)}
-                          className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs shadow-xs"
-                        >
-                          Khám phá gợi ý AI
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
           {/* Settings Menu Button */}
           <div className="relative">
             <Button
@@ -809,10 +508,9 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
                 setIsPlatformDropdownOpen(false)
                 setIsDatePickerOpen(false)
                 setIsFilterOpen(false)
-                setIsIntegrationsOpen(false)
               }}
               className="h-9 px-2.5 border-border shadow-2xs bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground rounded-xl"
-              title="Cài đặt lịch"
+              title={t("planner.settings.title")}
             >
               <Settings className="h-4 w-4" />
             </Button>
@@ -834,13 +532,30 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
                   >
                     <div className="flex items-center gap-2.5 text-muted-foreground group-hover:text-foreground">
                       <RefreshCw className="h-4 w-4 text-indigo-500 shrink-0" />
-                      <span className="text-foreground font-bold">Quản lý & Xuất nhập Dữ liệu</span>
+                      <span className="text-foreground font-bold">{t("planner.settings.import_export")}</span>
                     </div>
                   </button>
+
                 </div>
               </>
             )}
           </div>
+
+          {/* Media/Photo Button — khớp bản gốc PubliCast/frontend
+              PlannerToolbar.jsx:514-524 (nút icon vuông đen, toggle
+              SidebarIntegrations panel cạnh lịch). Đây là CỔNG DUY NHẤT vào
+              Google Drive, không lặp lại ở đâu khác trong Planner. */}
+          <button
+            onClick={() => setShowDrivePanel((prev) => !prev)}
+            title="Google Drive & Media"
+            className={`h-9 w-9 rounded-xl flex items-center justify-center shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0 border ${
+              showDrivePanel
+                ? "bg-slate-900 dark:bg-slate-100 border-slate-900 dark:border-slate-100 text-white dark:text-slate-900"
+                : "bg-card border-border text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+          >
+            <HardDrive className="h-4 w-4" />
+          </button>
 
           {/* Primary CTA */}
           <Button
@@ -863,12 +578,6 @@ export default function PlannerSubHeader({ onOpenNewPostModal }) {
       <ImportSyncModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
-      />
-
-      {/* Direct Google Drive Picker Modal */}
-      <GoogleDrivePickerModal
-        isOpen={isDrivePickerOpen}
-        onClose={() => setIsDrivePickerOpen(false)}
       />
     </div>
   )

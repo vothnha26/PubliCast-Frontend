@@ -51,7 +51,9 @@
       "create_post": "Bài viết mới",
       "export_report": "Xuất báo cáo",
       "add_integration": "Thêm kết nối",
-      "clear_all": "Xóa bộ lọc"
+      "clear_all": "Xóa bộ lọc",
+      "select_all": "Chọn tất cả",
+      "done": "Hoàn tất"
     },
     "search_placeholder": "Tìm kiếm bài viết...",
     "labels": {
@@ -65,7 +67,61 @@
       "scheduled_for": "Lên lịch vào",
       "platform_label": "Nền tảng",
       "status_label": "Trạng thái",
-      "type_label": "Loại bài viết"
+      "type_label": "Loại bài viết",
+      "all_platforms": "Tất cả nền tảng",
+      "panel_title": "BÁO CÁO & PHÂN TÍCH"
+    },
+    "integrations": {
+      "title": "TÍCH HỢP & KHO TÀI NGUYÊN",
+      "subtitle": "Nhập & đồng bộ phương tiện trực tiếp",
+      "search_drive": "Tìm tệp Drive...",
+      "social_folder": "Mạng xã hội 2026",
+      "video_folder": "Tài nguyên Video",
+      "drag_to_calendar": "Kéo vào Lịch",
+      "drag_banner": "KÉO THẢ TỆP VÀO LỊCH ĐỂ THÊM BÀI ĐĂNG",
+      "canva_title": "KẾT NỐI CANVA",
+      "canva_desc": "Tạo và nhập trực tiếp hình ảnh thiết kế từ Canva vào Lịch bài đăng.",
+      "canva_btn": "Kết nối Canva",
+      "ai_title": "TRỢ LÝ NỘI DUNG AI",
+      "ai_desc": "Gợi ý tưởng bài viết sáng tạo tự động bằng Trí tuệ nhân tạo.",
+      "ai_btn": "Khám phá gợi ý AI",
+      "tab_drive": "Drive",
+      "tab_canva": "Canva",
+      "tab_ideas": "Ý tưởng",
+      "my_drive": "Drive của tôi",
+      "files_count": "{{count}} tệp"
+    },
+    "settings": {
+      "title": "Cài đặt lịch",
+      "import_export": "Quản lý & Xuất nhập Dữ liệu"
+    },
+    "creator": {
+      "title": "Tạo bài viết mới từ Drive",
+      "subtitle": "Nhập nội dung & lên lịch đăng tự động",
+      "drive_imported": "Đã tải từ Google Drive",
+      "caption_label": "Nội dung bài viết (Caption)",
+      "caption_placeholder": "Viết chú thích hoặc nội dung cho bài đăng này...",
+      "scheduled_time": "Thời gian lên lịch:",
+      "cancel": "Hủy",
+      "submit": "Lên lịch bài đăng"
+    },
+    "drive": {
+      "connect_title": "Kết nối Google Drive",
+      "connect_desc": "Kéo thả hình ảnh & video từ Drive trực tiếp vào Lịch bài đăng.",
+      "connecting": "Đang kết nối...",
+      "search_placeholder": "Tìm kiếm Drive...",
+      "drag_hint": "Kéo tệp trực tiếp vào lịch",
+      "btn_connect": "Kết nối Google Drive",
+      "btn_manage": "Quản lý kết nối"
+    },
+    "import_export": {
+      "title": "QUẢN LÝ & XUẤT NHẬP DỮ LIỆU",
+      "subtitle": "Xuất & Nhập dữ liệu Lịch bài đăng",
+      "export_title": "Tùy chọn Xuất dữ liệu",
+      "export_csv": "Xuất báo cáo CSV / Excel",
+      "export_ical": "Xuất lịch theo định dạng iCal",
+      "import_title": "Nhập dữ liệu từ CSV / Google Sheet",
+      "drag_csv": "Kéo thả file CSV vào đây hoặc Bấm để chọn file"
     },
     "weekdays": {
       "MON": "T2",
@@ -91,7 +147,7 @@
       "Dec": "Tháng 12"
     },
     "insights": {
-      "title": "Planner Insights",
+      "title": "Phân tích Lịch bài",
       "subtitle": "Tối ưu hóa lịch đăng bài",
       "best_times": "KHUNG GIỜ VÀNG ĐĂNG BÀI",
       "month_stats": "THỐNG KÊ THÁNG NÀY",
@@ -100,7 +156,8 @@
       "integrations": "TÍCH HỢP HỆ THỐNG",
       "ai_title": "Gợi ý từ AI",
       "ai_desc": "Các bài viết dạng 'Case Study' của bạn có xu hướng cao hơn 40% tuần này. Tự động hóa thêm nội dung tương tự?",
-      "view_suggestions": "Xem gợi ý"
+      "view_suggestions": "Xem gợi ý",
+      "coming_soon": "Sắp ra mắt"
     }
   },
   "header": {

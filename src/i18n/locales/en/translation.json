@@ -51,7 +51,9 @@
       "create_post": "New Post",
       "export_report": "Export Report",
       "add_integration": "Add Integration",
-      "clear_all": "Clear Filters"
+      "clear_all": "Clear Filters",
+      "select_all": "Select All",
+      "done": "Done"
     },
     "search_placeholder": "Search posts...",
     "labels": {
@@ -65,7 +67,61 @@
       "scheduled_for": "Scheduled for",
       "platform_label": "Platform",
       "status_label": "Status",
-      "type_label": "Post type"
+      "type_label": "Post type",
+      "all_platforms": "All Platforms",
+      "panel_title": "REPORTS & INSIGHTS"
+    },
+    "integrations": {
+      "title": "INTEGRATIONS & MEDIA HUB",
+      "subtitle": "Import and sync media directly",
+      "search_drive": "Search Drive files...",
+      "social_folder": "Social Media 2026",
+      "video_folder": "Video Assets",
+      "drag_to_calendar": "Drag to Calendar",
+      "drag_banner": "DRAG A FILE ONTO THE CALENDAR TO IMPORT",
+      "canva_title": "CONNECT CANVA",
+      "canva_desc": "Create and import design graphics directly from Canva.",
+      "canva_btn": "Connect Canva",
+      "ai_title": "AI CONTENT ASSISTANT",
+      "ai_desc": "Generate creative post ideas automatically using AI.",
+      "ai_btn": "Explore AI Ideas",
+      "tab_drive": "Drive",
+      "tab_canva": "Canva",
+      "tab_ideas": "Ideas",
+      "my_drive": "My Drive",
+      "files_count": "{{count}} files"
+    },
+    "settings": {
+      "title": "Calendar Settings",
+      "import_export": "Data Management & Export/Import"
+    },
+    "creator": {
+      "title": "New Post from Drive",
+      "subtitle": "Add caption & schedule automatically",
+      "drive_imported": "Imported from Google Drive",
+      "caption_label": "Post Caption",
+      "caption_placeholder": "Write a caption or description for this post...",
+      "scheduled_time": "Scheduled Time:",
+      "cancel": "Cancel",
+      "submit": "Schedule Post"
+    },
+    "drive": {
+      "connect_title": "Connect Google Drive",
+      "connect_desc": "Drag and drop media files directly onto your post calendar.",
+      "connecting": "Connecting...",
+      "search_placeholder": "Search Drive...",
+      "drag_hint": "Drag file directly onto calendar",
+      "btn_connect": "Connect Google Drive",
+      "btn_manage": "Manage Connection"
+    },
+    "import_export": {
+      "title": "DATA MANAGEMENT & EXPORT/IMPORT",
+      "subtitle": "Export & Import Planner Calendar Data",
+      "export_title": "Export Data Options",
+      "export_csv": "Export CSV / Excel Report",
+      "export_ical": "Export Calendar as iCal",
+      "import_title": "Import Data from CSV / Google Sheet",
+      "drag_csv": "Drag & drop CSV file here or Click to select"
     },
     "weekdays": {
       "MON": "MON",
@@ -100,7 +156,8 @@
       "integrations": "INTEGRATIONS",
       "ai_title": "AI Insights",
       "ai_desc": "Your 'Case Study' posts are trending 40% higher this week. Automate more content like this?",
-      "view_suggestions": "View Suggestions"
+      "view_suggestions": "View Suggestions",
+      "coming_soon": "Coming Soon"
     }
   },
   "header": {

@@ -2,7 +2,7 @@ import React from "react"
 
 export default function PlannerSkeleton() {
   return (
-    <div className="flex flex-col h-full w-full space-y-4 animate-fade-in select-none">
+    <div className="flex flex-col h-full w-full space-y-4 animate-fade-in">
       {/* SubHeader Skeleton */}
       <div className="flex items-center justify-between pb-4 border-b border-border">
         <div className="flex items-center gap-3">

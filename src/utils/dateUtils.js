@@ -72,3 +72,26 @@ export function formatDateRange(currentDate, viewMode, t) {
 
   return `${first.getDate()} ${firstMonthName} – ${last.getDate()} ${lastMonthName}, ${first.getFullYear()}`
 }
+
+export function buildScheduledDate(dateStr, hour = 9) {
+  if (!dateStr) return new Date().toISOString()
+  const d = new Date(dateStr)
+  d.setHours(hour, 0, 0, 0)
+  return d.toISOString()
+}
+
+// "2026-11" — dùng làm key cache theo tháng (useContentPlanner.fetchedMonths).
+export function getMonthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+}
+
+// [startDate, endDate] dạng YYYY-MM-DD bao trọn tháng chứa `date` — dùng làm
+// tham số startDate/endDate khi gọi GET /posts theo từng tháng.
+export function getMonthDateRange(date) {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  const start = new Date(year, month, 1)
+  const end = new Date(year, month + 1, 0)
+  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  return [fmt(start), fmt(end)]
+}
