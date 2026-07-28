@@ -6,9 +6,8 @@ export const useContentPlanner = create((set, get) => ({
   viewMode: CALENDAR_VIEW_MODE.WEEK_HOURLY,
   currentDate: new Date(2026, 10, 20), // Nov 20, 2026
   selectedPlatforms: Object.keys(SOCIAL_PLATFORM),
-  // "ALL" = không lọc theo field đó — khớp đúng hành vi filterStatus/filterType
-  // ở frontend cũ (PlannerToolbar.jsx/WeeklyCalendarView.jsx), chọn 1 giá trị
-  // duy nhất mỗi lần (radio-style), không phải multi-select như selectedPlatforms.
+  selectedStatuses: Object.keys(POST_STATUS),
+  selectedTypes: Object.keys(POST_TYPE),
   filterStatus: FILTER_ALL,
   filterType: FILTER_ALL,
   searchQuery: "",
@@ -38,6 +37,45 @@ export const useContentPlanner = create((set, get) => ({
 
   selectAllPlatforms: () => {
     set({ selectedPlatforms: Object.keys(SOCIAL_PLATFORM) })
+  },
+
+  toggleStatus: (statusId) => {
+    set((state) => {
+      const isSelected = state.selectedStatuses.includes(statusId)
+      const newStatuses = isSelected
+        ? state.selectedStatuses.filter((s) => s !== statusId)
+        : [...state.selectedStatuses, statusId]
+      return { selectedStatuses: newStatuses }
+    })
+  },
+
+  selectAllStatuses: () => {
+    set({ selectedStatuses: Object.keys(POST_STATUS) })
+  },
+
+  toggleType: (typeId) => {
+    set((state) => {
+      const isSelected = state.selectedTypes.includes(typeId)
+      const newTypes = isSelected
+        ? state.selectedTypes.filter((t) => t !== typeId)
+        : [...state.selectedTypes, typeId]
+      return { selectedTypes: newTypes }
+    })
+  },
+
+  selectAllTypes: () => {
+    set({ selectedTypes: Object.keys(POST_TYPE) })
+  },
+
+  resetAllFilters: () => {
+    set({
+      selectedPlatforms: Object.keys(SOCIAL_PLATFORM),
+      selectedStatuses: Object.keys(POST_STATUS),
+      selectedTypes: Object.keys(POST_TYPE),
+      filterStatus: FILTER_ALL,
+      filterType: FILTER_ALL,
+      searchQuery: "",
+    })
   },
 
   navigateDate: (direction) => {
@@ -72,24 +110,28 @@ export const useContentPlanner = create((set, get) => ({
   },
 
   getFilteredPosts: () => {
-    const { posts, selectedPlatforms, filterStatus, filterType, searchQuery } = get()
+    const { posts, selectedPlatforms, selectedStatuses, selectedTypes, filterStatus, filterType, searchQuery } = get()
     let result = posts
 
-    if (selectedPlatforms && selectedPlatforms.length > 0) {
+    if (selectedPlatforms && selectedPlatforms.length > 0 && selectedPlatforms.length < Object.keys(SOCIAL_PLATFORM).length) {
       result = result.filter((post) => selectedPlatforms.includes(post.platform))
     }
 
-    if (filterStatus && filterStatus !== FILTER_ALL) {
+    if (selectedStatuses && selectedStatuses.length > 0 && selectedStatuses.length < Object.keys(POST_STATUS).length) {
+      result = result.filter((post) => selectedStatuses.includes(post.status))
+    } else if (filterStatus && filterStatus !== FILTER_ALL) {
       result = result.filter((post) => post.status === filterStatus)
     }
 
-    if (filterType && filterType !== FILTER_ALL) {
+    if (selectedTypes && selectedTypes.length > 0 && selectedTypes.length < Object.keys(POST_TYPE).length) {
+      result = result.filter((post) => selectedTypes.includes(post.type))
+    } else if (filterType && filterType !== FILTER_ALL) {
       result = result.filter((post) => post.type === filterType)
     }
 
     if (searchQuery && searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase().trim()
-      result = result.filter((post) => post.title.toLowerCase().includes(query))
+      result = result.filter((post) => post.title?.toLowerCase().includes(query))
     }
 
     return result

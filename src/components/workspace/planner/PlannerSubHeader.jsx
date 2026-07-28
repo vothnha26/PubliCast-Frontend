@@ -28,10 +28,13 @@ export default function PlannerSubHeader() {
     selectedPlatforms,
     togglePlatform,
     selectAllPlatforms,
-    filterStatus,
-    setFilterStatus,
-    filterType,
-    setFilterType,
+    selectedStatuses,
+    toggleStatus,
+    selectAllStatuses,
+    selectedTypes,
+    toggleType,
+    selectAllTypes,
+    resetAllFilters,
     searchQuery,
     setSearchQuery,
   } = useContentPlanner()
@@ -51,10 +54,13 @@ export default function PlannerSubHeader() {
   ]
 
   const totalPlatforms = Object.keys(SOCIAL_PLATFORM).length
+  const totalStatuses = Object.keys(POST_STATUS).length
+  const totalTypes = Object.keys(POST_TYPE).length
+
   const activeFiltersCount =
-    (totalPlatforms - selectedPlatforms.length) +
-    (filterStatus !== FILTER_ALL ? 1 : 0) +
-    (filterType !== FILTER_ALL ? 1 : 0)
+    (totalPlatforms - (selectedPlatforms?.length || totalPlatforms)) +
+    (totalStatuses - (selectedStatuses?.length || totalStatuses)) +
+    (totalTypes - (selectedTypes?.length || totalTypes))
 
   const monthKeys = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -268,81 +274,77 @@ export default function PlannerSubHeader() {
                     </button>
                   </div>
 
-                  {/* Status filter (Compact 2-Column Grid) */}
+                  {/* Status filter (Multi-Select Compact 2-Column Grid) */}
                   <div className="space-y-1.5">
-                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                      {t("planner.labels.status_label")}
-                    </span>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                        {t("planner.labels.status_label")}
+                      </span>
                       <button
-                        onClick={() => setFilterStatus(FILTER_ALL)}
-                        className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
-                          filterStatus === FILTER_ALL
-                            ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
-                            : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
-                        }`}
+                        onClick={selectAllStatuses}
+                        className="text-[10px] font-bold text-indigo-500 hover:underline"
                       >
-                        <span>{t("planner.status.all")}</span>
-                        {filterStatus === FILTER_ALL && <Check className="h-3 w-3 shrink-0" />}
+                        {t("planner.actions.select_all")}
                       </button>
-                      {Object.values(POST_STATUS).map((status) => (
-                        <button
-                          key={status.id}
-                          onClick={() => setFilterStatus(status.id)}
-                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
-                            filterStatus === status.id
-                              ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
-                              : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
-                          }`}
-                        >
-                          <span className="truncate">{t(status.labelKey)}</span>
-                          {filterStatus === status.id && <Check className="h-3 w-3 shrink-0" />}
-                        </button>
-                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {Object.values(POST_STATUS).map((status) => {
+                        const isChecked = selectedStatuses.includes(status.id)
+                        return (
+                          <button
+                            key={status.id}
+                            onClick={() => toggleStatus(status.id)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                              isChecked
+                                ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                                : "bg-slate-100/70 dark:bg-slate-800/50 text-muted-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            <span className="truncate">{t(status.labelKey)}</span>
+                            {isChecked && <Check className="h-3 w-3 shrink-0" />}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
 
-                  {/* Type filter (Compact 2-Column Grid) */}
+                  {/* Type filter (Multi-Select Compact 2-Column Grid) */}
                   <div className="space-y-1.5 pt-2.5 border-t border-border/60">
-                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                      {t("planner.labels.type_label")}
-                    </span>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                        {t("planner.labels.type_label")}
+                      </span>
                       <button
-                        onClick={() => setFilterType(FILTER_ALL)}
-                        className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
-                          filterType === FILTER_ALL
-                            ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
-                            : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
-                        }`}
+                        onClick={selectAllTypes}
+                        className="text-[10px] font-bold text-indigo-500 hover:underline"
                       >
-                        <span>{t("planner.type.all")}</span>
-                        {filterType === FILTER_ALL && <Check className="h-3 w-3 shrink-0" />}
+                        {t("planner.actions.select_all")}
                       </button>
-                      {Object.values(POST_TYPE).map((type) => (
-                        <button
-                          key={type.id}
-                          onClick={() => setFilterType(type.id)}
-                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
-                            filterType === type.id
-                              ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
-                              : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
-                          }`}
-                        >
-                          <span className="truncate">{t(type.labelKey)}</span>
-                          {filterType === type.id && <Check className="h-3 w-3 shrink-0" />}
-                        </button>
-                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {Object.values(POST_TYPE).map((type) => {
+                        const isChecked = selectedTypes.includes(type.id)
+                        return (
+                          <button
+                            key={type.id}
+                            onClick={() => toggleType(type.id)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                              isChecked
+                                ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                                : "bg-slate-100/70 dark:bg-slate-800/50 text-muted-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            <span className="truncate">{t(type.labelKey)}</span>
+                            {isChecked && <Check className="h-3 w-3 shrink-0" />}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
 
                   <div className="pt-2.5 border-t border-border/60 flex items-center justify-between">
                     <button
-                      onClick={() => {
-                        setFilterStatus(FILTER_ALL)
-                        setFilterType(FILTER_ALL)
-                        selectAllPlatforms()
-                      }}
+                      onClick={resetAllFilters}
                       className="text-xs font-bold text-rose-500 hover:underline"
                     >
                       {t("planner.actions.clear_all")}
