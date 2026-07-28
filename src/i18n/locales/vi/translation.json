@@ -22,6 +22,7 @@
     "upgrade": "Nâng cấp",
     "workspace_mode": "Chế độ Workspace",
     "toggle_theme": "Chuyển chế độ Sáng/Tối",
+    "settings": "Cài đặt",
     "top_nav": {
       "dashboard": "Tổng quan",
       "media_library": "Thư viện phương tiện",
@@ -64,5 +65,25 @@
     "connect_data_source": "Kết nối nguồn dữ liệu",
     "view_documentation": "Xem tài liệu hướng dẫn",
     "live_stream_active": "LIVE STREAM ACTIVE"
+  },
+  "bento": {
+    "live_engagement": "Tốc độ tương tác trực tiếp",
+    "live_now": "Đang trực tiếp",
+    "ai_optimization": "Hiệu suất tối ưu AI",
+    "scheduled_activations": "Lượt kích hoạt đã lên lịch",
+    "top_connections": "Kết nối hàng đầu",
+    "connections": {
+      "linkedin": "LinkedIn Global",
+      "enterprise": "Enterprise Portal",
+      "connected": "Đã kết nối",
+      "syncing": "Đang đồng bộ"
+    },
+    "next_step_title": "Bước tiếp theo: Mở rộng phạm vi",
+    "next_step_desc": "Các bài đăng gần đây của bạn đang hoạt động tốt hơn 40% so với trung bình ngành. Cân nhắc nâng ngân sách quảng cáo.",
+    "launch_wizard": "Khởi chạy trình tạo chiến dịch"
+  },
+  "planner_page": {
+    "title": "Lịch nội dung",
+    "desc": "Quản lý và lên lịch bài đăng trên tất cả nền tảng"
   }
 }

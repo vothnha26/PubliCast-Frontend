@@ -22,6 +22,7 @@
     "upgrade": "Upgrade",
     "workspace_mode": "Workspace mode",
     "toggle_theme": "Toggle Dark/Light Mode",
+    "settings": "Settings",
     "top_nav": {
       "dashboard": "Dashboard",
       "media_library": "Media Library",
@@ -64,5 +65,25 @@
     "connect_data_source": "Connect Data Source",
     "view_documentation": "View Documentation",
     "live_stream_active": "LIVE STREAM ACTIVE"
+  },
+  "bento": {
+    "live_engagement": "Live Engagement Velocity",
+    "live_now": "Live Now",
+    "ai_optimization": "AI Optimization Efficiency",
+    "scheduled_activations": "Scheduled Activations",
+    "top_connections": "Top Connections",
+    "connections": {
+      "linkedin": "LinkedIn Global",
+      "enterprise": "Enterprise Portal",
+      "connected": "Connected",
+      "syncing": "Syncing"
+    },
+    "next_step_title": "Next Step: Expand Reach",
+    "next_step_desc": "Your recent posts are performing 40% better than the industry average. Consider upgrading your ad spend.",
+    "launch_wizard": "Launch Campaign Wizard"
+  },
+  "planner_page": {
+    "title": "Content Planner",
+    "desc": "Manage and schedule posts across all platforms"
   }
 }

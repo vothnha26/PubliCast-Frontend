@@ -1,120 +1,165 @@
 import React from "react"
 import { useTranslation } from "react-i18next"
+import { Sparkles, Zap, Radio, ChevronRight, Link2, Briefcase, TrendingUp, ArrowUpRight } from "lucide-react"
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts"
 import { Button } from "@/components/ui/button"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Plus, Sparkles, Zap, Radio, ChevronRight } from "lucide-react"
+
+const MOCK_BENTO_DATA = {
+  aiOptimization: "84%",
+  aiTrend: "+5.2% vs last week",
+  scheduledActivations: "1.2k",
+  activationsTrend: "+14.8% vs last week",
+  connections: [
+    { id: "linkedin", nameKey: "bento.connections.linkedin", statusKey: "bento.connections.connected", icon: Link2, change: "+12%", positive: true },
+    { id: "enterprise", nameKey: "bento.connections.enterprise", statusKey: "bento.connections.syncing", icon: Briefcase, change: "+5%", positive: false },
+  ],
+  engagementSeries: [
+    { time: "00:00", value: 320 },
+    { time: "04:00", value: 280 },
+    { time: "08:00", value: 540 },
+    { time: "12:00", value: 810 },
+    { time: "16:00", value: 690 },
+    { time: "20:00", value: 940 },
+    { time: "23:59", value: 760 },
+  ],
+}
+
+const CustomChartTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="rounded-lg border border-border bg-card p-2.5 shadow-md text-xs">
+        <p className="font-bold text-foreground">Time: {data.time}</p>
+        <p className="text-[hsl(var(--sidebar-primary))] font-semibold mt-1">
+          Engagement: {data.value.toLocaleString()}
+        </p>
+      </div>
+    )
+  }
+  return null
+}
 
 export default function BentoGrid() {
   const { t } = useTranslation()
 
   return (
-    <div className="space-y-8 select-none">
-      {/* Live Stream Active Badge (Top Right Pill) */}
-      <div className="flex justify-end">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold">
-          <Zap className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-          <span>{t("dashboard.live_stream_active")}</span>
+    <div className="grid grid-cols-12 grid-rows-[400px_220px] gap-4 select-none">
+      {/* Live Engagement Velocity — main chart, top-left, spans 8 cols */}
+      <div className="col-span-8 row-start-1 rounded-xl border bg-card p-6 overflow-hidden relative">
+        <div className="flex items-center justify-between mb-6">
+          <span className="text-[11px] font-bold uppercase tracking-[0.55px] text-muted-foreground">
+            {t("bento.live_engagement")}
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-[hsl(var(--sidebar-accent))] px-2 py-1 text-[13px] text-[hsl(var(--sidebar-primary))]">
+            <Radio className="h-2 w-2 fill-[hsl(var(--sidebar-primary))] text-[hsl(var(--sidebar-primary))] animate-pulse" />
+            {t("bento.live_now")}
+          </span>
+        </div>
+        <div className="h-[calc(100%-4rem)]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={MOCK_BENTO_DATA.engagementSeries} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="engagementGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(var(--sidebar-primary))" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="hsl(var(--sidebar-primary))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} strokeDasharray="6 6" className="stroke-muted/40" />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 11, fontWeight: 500 }}
+                tickLine={false}
+                axisLine={false}
+                className="fill-muted-foreground"
+              />
+              <YAxis
+                tick={{ fontSize: 11, fontWeight: 600 }}
+                tickLine={false}
+                axisLine={false}
+                className="fill-foreground/80"
+              />
+              <Tooltip content={<CustomChartTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="hsl(var(--sidebar-primary))"
+                strokeWidth={2.5}
+                fill="url(#engagementGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Main Welcome State (Centered Layout) */}
-      <div className="flex flex-col items-center justify-center text-center py-8 max-w-xl mx-auto space-y-6">
-        {/* Soft Blue Icon Container */}
-        <div className="h-20 w-20 rounded-full bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-          <Sparkles className="h-10 w-10" />
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            {t("dashboard.welcome_title")}
-          </h2>
-          <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            {t("dashboard.welcome_desc")}
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-3 pt-2">
-          <Button className="h-10 px-5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-xs">
-            <Plus className="h-4 w-4" />
-            <span>{t("dashboard.connect_data_source")}</span>
-          </Button>
-
-          <Button variant="outline" className="h-10 px-5 text-xs font-semibold rounded-lg bg-background shadow-2xs">
-            {t("dashboard.view_documentation")}
-          </Button>
-        </div>
-      </div>
-
-      {/* Campaign Performance Bento Grid Canvas */}
-      <div className="pt-4 border-t border-slate-200/60 dark:border-slate-800/60 space-y-4">
-        <div className="flex items-center justify-between">
+      {/* AI Optimization + Scheduled Activations — top-right, spans 4 cols, stacked */}
+      <div className="col-span-4 row-start-1 flex flex-col gap-4">
+        <div className="flex-1 rounded-xl bg-[hsl(var(--sidebar-primary))] p-6 flex flex-col justify-between text-white shadow-xs">
+          <Sparkles className="h-6 w-6" />
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Campaign Performance</h3>
-            <p className="text-xs text-muted-foreground">Real-time engagement orchestration</p>
+            <div className="text-2xl font-bold">{MOCK_BENTO_DATA.aiOptimization}</div>
+            <p className="text-sm opacity-90 mt-1">{t("bento.ai_optimization")}</p>
+            <div className="flex items-center gap-1 text-[11px] text-emerald-200 mt-2 font-medium">
+              <ArrowUpRight className="h-3 w-3" />
+              <span>{MOCK_BENTO_DATA.aiTrend}</span>
+            </div>
           </div>
-          <Button variant="outline" size="sm" className="text-xs h-8">
-            Export Report
-          </Button>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Main Chart Card */}
-          <Card className="md:col-span-2 p-5 bg-card border-slate-200/80 dark:border-slate-800/80">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Live Engagement Velocity
-              </span>
-              <span className="flex items-center gap-1.5 text-xs text-indigo-600 font-semibold">
-                <Radio className="h-3.5 w-3.5 animate-pulse" /> Live Now
-              </span>
+        <div className="flex-1 rounded-xl bg-[hsl(var(--sidebar-accent))] border p-6 flex flex-col justify-between shadow-xs">
+          <Zap className="h-5 w-5 text-foreground" />
+          <div>
+            <div className="text-2xl font-bold text-foreground">{MOCK_BENTO_DATA.scheduledActivations}</div>
+            <p className="text-sm text-muted-foreground mt-1">{t("bento.scheduled_activations")}</p>
+            <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-2 font-medium">
+              <TrendingUp className="h-3 w-3" />
+              <span>{MOCK_BENTO_DATA.activationsTrend}</span>
             </div>
-            <div className="h-48 rounded-lg bg-slate-100 dark:bg-slate-900 border border-dashed flex items-center justify-center text-xs text-muted-foreground">
-              [ Chart Graph Visualization ]
-            </div>
-          </Card>
+          </div>
+        </div>
+      </div>
 
-          {/* AI Optimizer Card */}
-          <Card className="p-5 bg-indigo-600 text-white border-none flex flex-col justify-between">
-            <div className="space-y-1">
-              <Sparkles className="h-6 w-6 text-indigo-200 mb-2" />
-              <div className="text-2xl font-extrabold">84%</div>
-              <p className="text-xs text-indigo-200 font-medium">AI Optimization Velocity Score</p>
-            </div>
-            <p className="text-[11px] text-indigo-100/80 mt-4">
-              Your posts are optimized for maximum peak hours.
-            </p>
-          </Card>
-
-          {/* Connections Card */}
-          <Card className="p-5 space-y-3">
-            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">Top Connections</h4>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-100 dark:bg-slate-900">
-                <span className="font-semibold">LinkedIn Global</span>
-                <span className="text-emerald-600 font-bold">+18%</span>
+      {/* Top Connections — bottom-left, spans 4 cols */}
+      <div className="col-span-4 row-start-2 rounded-xl border bg-card p-[17px] flex flex-col gap-4 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xl font-semibold text-foreground">{t("bento.top_connections")}</h4>
+          <ChevronRight className="h-4 w-4 text-muted-foreground rotate-90" />
+        </div>
+        <div className="flex flex-col gap-2">
+          {MOCK_BENTO_DATA.connections.map((conn) => {
+            const Icon = conn.icon
+            return (
+              <div
+                key={conn.id}
+                className="flex items-center gap-4 p-1 rounded-lg transition-colors hover:bg-[hsl(var(--sidebar-accent)/0.5)]"
+              >
+                <div className="h-10 w-10 rounded-lg bg-[hsl(var(--sidebar-accent))] flex items-center justify-center shrink-0">
+                  <Icon className="h-4 w-4 text-[hsl(var(--sidebar-primary))]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{t(conn.nameKey)}</p>
+                  <p className="text-[13px] text-muted-foreground">{t(conn.statusKey)}</p>
+                </div>
+                <span
+                  className={`text-[11px] font-bold tracking-[0.55px] ${
+                    conn.positive ? "text-[hsl(var(--sidebar-primary))]" : "text-amber-600"
+                  }`}
+                >
+                  {conn.change}
+                </span>
               </div>
-              <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-100 dark:bg-slate-900">
-                <span className="font-semibold">Enterprise Portal</span>
-                <span className="text-emerald-600 font-bold">+8%</span>
-              </div>
-            </div>
-          </Card>
+            )
+          })}
+        </div>
+      </div>
 
-          {/* Next Step Banner Card */}
-          <Card className="md:col-span-2 p-5 flex items-center justify-between bg-gradient-to-r from-indigo-50/50 to-slate-50/50 dark:from-indigo-950/20 dark:to-slate-900/20 border-indigo-100 dark:border-indigo-900/50">
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                Next Step: Expand Reach
-              </h4>
-              <p className="text-xs text-muted-foreground">
-                Your recent posts are performing 40% better than the industry average.
-              </p>
-            </div>
-            <Button size="sm" variant="ghost" className="text-xs text-indigo-600 font-semibold gap-1">
-              Launch Wizard <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
-          </Card>
+      {/* Next Step CTA — bottom-right, spans 8 cols */}
+      <div className="col-span-8 row-start-2 rounded-xl border bg-[hsl(var(--sidebar-accent))] p-[17px] flex flex-col justify-center overflow-hidden shadow-xs">
+        <div className="max-w-md">
+          <h4 className="text-xl font-semibold text-foreground mb-1">{t("bento.next_step_title")}</h4>
+          <p className="text-sm text-muted-foreground mb-4">{t("bento.next_step_desc")}</p>
+          <Button className="h-9 px-5 text-xs font-semibold rounded-lg bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary)/0.9)] text-white gap-2 shadow-xs">
+            <span>{t("bento.launch_wizard")}</span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </div>
