@@ -10,15 +10,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      {/*
-        TODO(auth): ProtectedRoute đang KHÔNG được bọc quanh DashboardLayout bên dưới,
-        để xem UI khi chưa nối backend thật. Phải bọc lại <ProtectedRoute> trước khi
-        nối API thật / commit lên nhánh chính, nếu không mọi trang sẽ truy cập được
-        mà không cần đăng nhập.
-      */}
-      <Route element={<DashboardLayout />}>
-        <Route path="/workspace/planner" element={<PlannerPage />} />
-        <Route path="/workspace/planner/calendar" element={<ContentPlannerPage />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
+          <Route path="/workspace/planner" element={<PlannerPage />} />
+          <Route path="/workspace/planner/calendar" element={<ContentPlannerPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/workspace/planner" replace />} />
     </Routes>

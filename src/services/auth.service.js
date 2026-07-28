@@ -10,7 +10,9 @@ export const authService = {
     return response.data
   },
   getProfile: async () => {
-    const response = await api.get("/auth/me")
+    // Route thật là /user/profile (backend/src/routes/auth/profile.routes.js:36),
+    // KHÔNG phải /auth/me — endpoint đó không tồn tại (404).
+    const response = await api.get("/user/profile")
     return response.data
   },
 }

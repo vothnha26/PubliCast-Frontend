@@ -9,9 +9,12 @@ export const useAuthStore = create((set) => ({
   checkAuth: async () => {
     set({ loading: true })
     try {
-      const data = await authService.getProfile()
+      // GET /user/profile trả {message, data: {...user}} — không có field
+      // "user" lồng bên trong data (khác shape POST /auth/login trả thẳng
+      // {message, role, redirectUrl, user}). Đọc đúng data.data.
+      const res = await authService.getProfile()
       set({
-        user: data.user || data,
+        user: res.data,
         isAuthenticated: true,
         loading: false,
       })
