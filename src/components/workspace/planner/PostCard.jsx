@@ -39,7 +39,7 @@ export default function PostCard({ post, variant = "full", onRemove }) {
   }
 
   return (
-    <div className="group relative rounded-xl border border-slate-200 dark:border-slate-800 bg-card p-2 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+    <div className="group relative rounded-xl border border-slate-200 dark:border-slate-800 bg-card p-2 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between cursor-pointer">
       {onRemove && (
         <button
           onClick={() => onRemove(post.id)}
@@ -52,14 +52,14 @@ export default function PostCard({ post, variant = "full", onRemove }) {
       {/* Thumbnail */}
       <div className="relative h-20 w-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-900 mb-2">
         {post.thumbnail ? (
-          <img src={post.thumbnail} alt={post.title} className="h-full w-full object-cover" />
+          <img src={post.thumbnail} alt={post.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-muted-foreground">
             <ImageIcon className="h-6 w-6" />
           </div>
         )}
         {/* Platform Badge Overlay */}
-        <span className={`absolute top-1.5 right-1.5 h-4 w-4 rounded-md ${platformConfig.dotClass} flex items-center justify-center text-white text-[9px] font-bold shadow-xs`}>
+        <span className={`absolute top-1.5 right-1.5 h-4 w-4 rounded-md ${platformConfig.dotClass} flex items-center justify-center text-white text-[9px] font-bold shadow-xs group-hover:scale-110 transition-transform`}>
           {platformConfig.name.charAt(0)}
         </span>
       </div>

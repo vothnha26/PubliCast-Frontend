@@ -1,10 +1,12 @@
 import React from "react"
-import { Outlet } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom"
 import Sidebar from "@/components/workspace/Sidebar"
 import Header from "@/components/workspace/Header"
 import SettingsDrawer from "@/components/workspace/SettingsDrawer"
 
 export default function DashboardLayout() {
+  const location = useLocation()
+
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
       {/* Fixed Left Sidebar */}
@@ -16,8 +18,10 @@ export default function DashboardLayout() {
         <Header />
 
         {/* Scrollable Canvas area */}
-        <main className="flex-1 overflow-y-auto p-6 bg-muted/20">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto bg-muted/20">
+          <div key={location.pathname} className="h-full w-full animate-fade-in">
+            <Outlet />
+          </div>
         </main>
       </div>
 
