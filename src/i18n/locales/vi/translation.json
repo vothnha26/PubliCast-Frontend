@@ -8,6 +8,7 @@
       "tools": "CÔNG CỤ"
     },
     "analytics": "Phân tích",
+    "scheduler": "Scheduler",
     "management": "Quản lý",
     "team": "Đội ngũ",
     "reports": "Báo cáo",
@@ -15,6 +16,39 @@
     "approval_requests": "Yêu cầu duyệt",
     "assets": "Tài nguyên",
     "ads": "Quảng cáo"
+  },
+  "planner": {
+    "status": {
+      "published": "ĐÃ ĐĂNG",
+      "scheduled": "ĐÃ LÊN LỊCH",
+      "drafting": "BẢN NHÁP",
+      "failed": "THẤT BẠI"
+    },
+    "view": {
+      "month": "Tháng",
+      "week": "Tuần",
+      "day": "Ngày",
+      "list": "Danh sách"
+    },
+    "actions": {
+      "today": "Hôm nay",
+      "filters": "Bộ lọc",
+      "create_post": "Bài viết mới",
+      "export_report": "Xuất báo cáo",
+      "add_integration": "Thêm kết nối"
+    },
+    "insights": {
+      "title": "Planner Insights",
+      "subtitle": "Tối ưu hóa lịch đăng bài",
+      "best_times": "KHUNG GIỜ VÀNG ĐĂNG BÀI",
+      "month_stats": "THỐNG KÊ THÁNG NÀY",
+      "total_posts": "TỔNG BÀI ĐĂNG",
+      "scheduled": "ĐÃ LÊN LỊCH",
+      "integrations": "TÍCH HỢP HỆ THỐNG",
+      "ai_title": "Gợi ý từ AI",
+      "ai_desc": "Các bài viết dạng 'Case Study' của bạn có xu hướng cao hơn 40% tuần này. Tự động hóa thêm nội dung tương tự?",
+      "view_suggestions": "Xem gợi ý"
+    }
   },
   "header": {
     "brand": "Social Orchestrator",

@@ -8,6 +8,7 @@
       "tools": "TOOLS"
     },
     "analytics": "Analytics",
+    "scheduler": "Scheduler",
     "management": "Management",
     "team": "Team",
     "reports": "Reports",
@@ -15,6 +16,39 @@
     "approval_requests": "Approval Requests",
     "assets": "Assets",
     "ads": "Ads"
+  },
+  "planner": {
+    "status": {
+      "published": "PUBLISHED",
+      "scheduled": "SCHEDULED",
+      "drafting": "DRAFTING",
+      "failed": "FAILED"
+    },
+    "view": {
+      "month": "Month",
+      "week": "Week",
+      "day": "Day",
+      "list": "List"
+    },
+    "actions": {
+      "today": "Today",
+      "filters": "Filters",
+      "create_post": "New Post",
+      "export_report": "Export Report",
+      "add_integration": "Add Integration"
+    },
+    "insights": {
+      "title": "Planner Insights",
+      "subtitle": "Optimize your scheduling",
+      "best_times": "BEST TIMES TO POST",
+      "month_stats": "THIS MONTH STATS",
+      "total_posts": "TOTAL POSTS",
+      "scheduled": "SCHEDULED",
+      "integrations": "INTEGRATIONS",
+      "ai_title": "AI Insights",
+      "ai_desc": "Your 'Case Study' posts are trending 40% higher this week. Automate more content like this?",
+      "view_suggestions": "View Suggestions"
+    }
   },
   "header": {
     "brand": "Social Orchestrator",

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom"
 import LoginPage from "@/pages/auth/LoginPage"
 import DashboardLayout from "@/layout/DashboardLayout"
 import PlannerPage from "@/pages/workspace/planner/PlannerPage"
+import ContentPlannerPage from "@/pages/workspace/planner/ContentPlannerPage"
 import { ProtectedRoute } from "@/components/shared/ProtectedRoute"
 
 export default function App() {
@@ -16,15 +17,8 @@ export default function App() {
         mà không cần đăng nhập.
       */}
       <Route element={<DashboardLayout />}>
-        {/*
-          TODO(planner): "/workspace/planner" và "/workspace/planner/calendar" tạm thời
-          trỏ chung PlannerPage (placeholder BentoGrid dashboard, chưa phải trang Planner
-          thật — lịch tuần/tháng, filter platform...). Khi thiết kế Planner thật xong,
-          tách 2 route này ra 2 page riêng (hoặc quyết định gộp 1 route duy nhất nếu
-          "/calendar" không cần tồn tại độc lập).
-        */}
         <Route path="/workspace/planner" element={<PlannerPage />} />
-        <Route path="/workspace/planner/calendar" element={<PlannerPage />} />
+        <Route path="/workspace/planner/calendar" element={<ContentPlannerPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/workspace/planner" replace />} />
     </Routes>

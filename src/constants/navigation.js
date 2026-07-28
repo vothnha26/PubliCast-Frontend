@@ -25,7 +25,8 @@ export const SIDEBAR_NAV_GROUPS = Object.freeze([
     id: "analytics",
     titleKey: "nav.groups.analytics",
     items: [
-      { id: "analytics", labelKey: "nav.analytics", path: "/workspace/planner", icon: BarChart2, activeDot: true },
+      { id: "analytics", labelKey: "nav.analytics", path: "/workspace/planner", icon: BarChart2 },
+      { id: "scheduler", labelKey: "nav.scheduler", path: "/workspace/planner/calendar", icon: Calendar, activeDot: true },
       { id: "management", labelKey: "nav.management", path: "/workspace/management", icon: Sliders },
       { id: "team", labelKey: "nav.team", path: "/workspace/team", icon: Users },
       { id: "reports", labelKey: "nav.reports", path: "/manage/reports", icon: FileText },
