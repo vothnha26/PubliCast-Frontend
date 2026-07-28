@@ -36,7 +36,7 @@ export default function Sidebar() {
                 `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive
                     ? "bg-[hsl(var(--sidebar-accent))] text-[hsl(var(--sidebar-accent-foreground))]"
-                    : "hover:bg-[hsl(var(--sidebar-accent))/50] text-muted-foreground hover:text-foreground"
+                    : "hover:bg-[hsl(var(--sidebar-accent))] text-muted-foreground hover:text-foreground"
                 }`
               }
             >
@@ -68,7 +68,7 @@ export default function Sidebar() {
           size="icon"
           className="h-8 w-8"
           onClick={toggleTheme}
-          title="Toggle Dark/Light Mode"
+          title={t("header.toggle_theme")}
         >
           {theme === THEME_MODE.DARK ? (
             <Sun className="h-4 w-4 text-amber-400" />

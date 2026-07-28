@@ -13,7 +13,12 @@
     "search": "Search campaigns, posts...",
     "quick_create": "Create New",
     "profile": "My Profile",
-    "settings": "Settings"
+    "settings": "Settings",
+    "toggle_theme": "Toggle Dark/Light Mode"
+  },
+  "planner_page": {
+    "title": "Workspace Overview & Planner",
+    "desc": "PubliCast social media management dashboard canvas."
   },
   "plan": {
     "pro_title": "PubliCast Pro Plan",
@@ -40,8 +45,12 @@
   },
   "bento": {
     "total_posts": "Total Scheduled Posts",
+    "total_posts_desc": "Scheduled for this month",
     "engagement": "Average Engagement Rate",
+    "engagement_desc": "Compared to last week",
+    "higher": "Higher",
     "active_channels": "Connected Channels",
+    "active_channels_desc": "YouTube, Facebook, LinkedIn...",
     "upcoming": "Upcoming Publications"
   }
 }

@@ -28,7 +28,7 @@ export default function BentoGrid() {
         </div>
         <div className="mt-4">
           <div className="text-3xl font-bold">{MOCK_BENTO_DATA.totalPosts}</div>
-          <p className="text-xs text-muted-foreground mt-1">Scheduled for this month</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("bento.total_posts_desc")}</p>
         </div>
       </Card>
 
@@ -42,10 +42,10 @@ export default function BentoGrid() {
           <div className="text-3xl font-bold flex items-center gap-2">
             {MOCK_BENTO_DATA.engagementRate}
             <Badge variant="secondary" className="text-[10px] bg-emerald-500/10 text-emerald-600">
-              Higher
+              {t("bento.higher")}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Compared to last week</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("bento.engagement_desc")}</p>
         </div>
       </Card>
 
@@ -57,7 +57,7 @@ export default function BentoGrid() {
         </div>
         <div className="mt-4">
           <div className="text-3xl font-bold">{MOCK_BENTO_DATA.activeChannels}</div>
-          <p className="text-xs text-muted-foreground mt-1">YouTube, Facebook, LinkedIn...</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("bento.active_channels_desc")}</p>
         </div>
       </Card>
 

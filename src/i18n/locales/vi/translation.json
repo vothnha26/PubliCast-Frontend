@@ -13,7 +13,12 @@
     "search": "Tìm kiếm chiến dịch, bài viết...",
     "quick_create": "Tạo bài mới",
     "profile": "Hồ sơ cá nhân",
-    "settings": "Cài đặt"
+    "settings": "Cài đặt",
+    "toggle_theme": "Chuyển chế độ Sáng/Tối"
+  },
+  "planner_page": {
+    "title": "Tổng quan Workspace & Lịch xuất bản",
+    "desc": "Bảng điều khiển quản lý mạng xã hội PubliCast."
   },
   "plan": {
     "pro_title": "Gói PubliCast Pro",
@@ -40,8 +45,12 @@
   },
   "bento": {
     "total_posts": "Bài viết đã lên lịch",
+    "total_posts_desc": "Đã lên lịch trong tháng này",
     "engagement": "Tỷ lệ tương tác trung bình",
+    "engagement_desc": "So với tuần trước",
+    "higher": "Cao hơn",
     "active_channels": "Kênh mạng xã hội đã kết nối",
+    "active_channels_desc": "YouTube, Facebook, LinkedIn...",
     "upcoming": "Bài viết chuẩn bị xuất bản"
   }
 }
