@@ -8,7 +8,6 @@ import {
   FileText,
   Calendar,
   FileSpreadsheet,
-  HardDrive,
   Download,
   AlertTriangle,
   CheckCircle2,
@@ -18,9 +17,13 @@ import {
   FileCode,
   Sparkles,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useContentPlanner } from "@/store/useContentPlanner"
-import GoogleDrivePickerModal from "./GoogleDrivePickerModal"
+import { useBrandStore } from "@/store/useBrandStore"
+import { calendarImportExportService } from "@/services/calendarImportExportService"
+import { getMonthDateRange } from "@/utils/dateUtils"
+import { EXPORT_FORMAT, EXPORT_RANGE } from "@/constants/calendarEvent"
 
 export const MODAL_TAB = {
   IMPORT: "IMPORT",
@@ -34,7 +37,8 @@ export const IMPORT_STEP = {
 }
 
 export default function ImportSyncModal({ isOpen, onClose }) {
-  const { fetchPlannerData } = useContentPlanner()
+  const { fetchPlannerData, currentDate } = useContentPlanner()
+  const activeBrand = useBrandStore((state) => state.activeBrand)
 
   const [activeTab, setActiveTab] = useState(MODAL_TAB.IMPORT)
   const [importStep, setImportStep] = useState(IMPORT_STEP.SELECT)
@@ -44,11 +48,10 @@ export default function ImportSyncModal({ isOpen, onClose }) {
   const [uploadError, setUploadError] = useState(null)
   const [destination, setDestination] = useState("Lịch chính (Main Scheduler)")
   const [overwriteDuplicates, setOverwriteDuplicates] = useState(true)
-  const [exportFormat, setExportFormat] = useState("csv")
-  const [exportRange, setExportRange] = useState("month")
+  const [exportFormat, setExportFormat] = useState(EXPORT_FORMAT.CSV)
+  const [exportRange, setExportRange] = useState(EXPORT_RANGE.MONTH)
   const [successMessage, setSuccessMessage] = useState(null)
   const [showFormatHelp, setShowFormatHelp] = useState(false)
-  const [isDrivePickerOpen, setIsDrivePickerOpen] = useState(false)
 
   const fileInputRef = useRef(null)
 
@@ -97,30 +100,84 @@ export default function ImportSyncModal({ isOpen, onClose }) {
     }
   }
 
-  const handleImportSubmit = () => {
+  const handleImportSubmit = async () => {
     if (!selectedFile || uploadError) return
 
+    // CSV import chưa có endpoint backend tương ứng (đã khảo sát
+    // backend/src/routes/workspace/post.routes.js — không có route CSV) —
+    // chỉ ICS gọi API thật, CSV vẫn là placeholder rõ ràng, không giả vờ thành công.
+    if (importStep !== IMPORT_STEP.UPLOAD_ICS) {
+      toast.error("Import CSV chưa khả dụng — backend chưa có endpoint tương ứng.")
+      return
+    }
+
+    if (!activeBrand?.id) {
+      toast.error("Chưa xác định được brand — không thể import.")
+      return
+    }
+
     setIsProcessing(true)
-    setTimeout(() => {
-      setIsProcessing(false)
-      setSuccessMessage(`Nhập thành công tập tin "${selectedFile.name}" vào ${destination}!`)
-      if (fetchPlannerData) fetchPlannerData()
+    try {
+      const result = await calendarImportExportService.importIcs(activeBrand.id, selectedFile)
+      setSuccessMessage(result.message || `Đã nhập thành công "${selectedFile.name}"!`)
+      if (fetchPlannerData) fetchPlannerData(activeBrand.id)
 
       setTimeout(() => {
         handleClose()
       }, 1500)
-    }, 1200)
+    } catch (err) {
+      setUploadError(err?.response?.data?.message || "Import thất bại. Kiểm tra lại file .ics.")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
-  const handleExportSubmit = () => {
+  const handleExportSubmit = async () => {
+    // Chỉ .ics gọi API thật (GET /calendar-events/export-ics đã xác nhận hoạt
+    // động qua Postman). CSV/PDF/JSON chưa có endpoint backend tương ứng —
+    // báo lỗi rõ ràng thay vì giả vờ xuất thành công.
+    if (exportFormat !== EXPORT_FORMAT.ICS) {
+      toast.error(`Xuất định dạng .${exportFormat.toUpperCase()} chưa khả dụng — backend chưa có endpoint tương ứng.`)
+      return
+    }
+
+    if (!activeBrand?.id) {
+      toast.error("Chưa xác định được brand — không thể xuất dữ liệu.")
+      return
+    }
+
     setIsProcessing(true)
-    setTimeout(() => {
-      setIsProcessing(false)
-      setSuccessMessage(`Đã xuất thành công báo cáo Lịch dạng .${exportFormat.toUpperCase()}!`)
+    try {
+      let startDate, endDate
+      if (exportRange === EXPORT_RANGE.WEEK) {
+        const d = new Date(currentDate)
+        const day = d.getDay()
+        const sunday = new Date(d)
+        sunday.setDate(d.getDate() - day)
+        const saturday = new Date(d)
+        saturday.setDate(d.getDate() - day + 6)
+        const fmt = (x) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`
+        startDate = fmt(sunday)
+        endDate = fmt(saturday)
+      } else if (exportRange === EXPORT_RANGE.ALL) {
+        // BE yêu cầu bắt buộc startDate/endDate (400 nếu thiếu) — dùng khoảng
+        // rộng thay vì thật sự "tất cả", vì export-ics không có chế độ không giới hạn.
+        startDate = "2020-01-01"
+        endDate = "2030-12-31"
+      } else {
+        ;[startDate, endDate] = getMonthDateRange(currentDate)
+      }
+
+      await calendarImportExportService.exportIcs(activeBrand.id, startDate, endDate)
+      setSuccessMessage("Đã xuất thành công lịch dạng .ICS! Kiểm tra thư mục Downloads.")
       setTimeout(() => {
         handleClose()
       }, 1500)
-    }, 1000)
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Xuất dữ liệu thất bại.")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -132,7 +189,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-50 animate-scale-in select-none">
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-50 animate-scale-in">
         {/* Header Modal với Tiêu đề đồng bộ Tiếng Việt */}
         <div className="px-6 pt-5 pb-4 border-b border-border/60 flex items-center justify-between">
           <div>
@@ -238,33 +295,9 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                   </button>
                 </div>
 
-                {/* Khối 2: Tích hợp Đám mây (Cloud Integration - Nằm vùng riêng biệt theo phản hồi) */}
-                <div className="pt-3 border-t border-border/60 space-y-2">
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    Tích hợp Đám mây (Cloud Integration)
-                  </span>
-
-                  <button
-                    onClick={() => {
-                      handleClose()
-                      setIsDrivePickerOpen(true)
-                    }}
-                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/20 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 transition-all group text-left"
-                  >
-                    <div className="flex items-start gap-3.5">
-                      <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform shrink-0">
-                        <HardDrive className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-foreground">Duyệt tệp từ Google Drive</h4>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Nhập hình ảnh & video bài đăng trực tiếp từ kho lưu trữ
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 ml-2" />
-                  </button>
-                </div>
+                {/* Google Drive đã bỏ khỏi đây — dùng nút "Google Drive" trên
+                    toolbar chính (PlannerSubHeader.jsx) làm CỔNG DUY NHẤT vào
+                    GoogleDrivePickerModal, tránh nhiều nơi cùng làm 1 việc. */}
               </div>
             )}
 
@@ -494,9 +527,9 @@ export default function ImportSyncModal({ isOpen, onClose }) {
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
-                  onClick={() => setExportFormat("csv")}
+                  onClick={() => setExportFormat(EXPORT_FORMAT.CSV)}
                   className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    exportFormat === "csv"
+                    exportFormat === EXPORT_FORMAT.CSV
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                       : "bg-slate-100/50 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-100"
                   }`}
@@ -506,9 +539,9 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                 </button>
 
                 <button
-                  onClick={() => setExportFormat("ics")}
+                  onClick={() => setExportFormat(EXPORT_FORMAT.ICS)}
                   className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    exportFormat === "ics"
+                    exportFormat === EXPORT_FORMAT.ICS
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                       : "bg-slate-100/50 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-100"
                   }`}
@@ -518,9 +551,9 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                 </button>
 
                 <button
-                  onClick={() => setExportFormat("pdf")}
+                  onClick={() => setExportFormat(EXPORT_FORMAT.PDF)}
                   className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    exportFormat === "pdf"
+                    exportFormat === EXPORT_FORMAT.PDF
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                       : "bg-slate-100/50 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-100"
                   }`}
@@ -530,9 +563,9 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                 </button>
 
                 <button
-                  onClick={() => setExportFormat("json")}
+                  onClick={() => setExportFormat(EXPORT_FORMAT.JSON)}
                   className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
-                    exportFormat === "json"
+                    exportFormat === EXPORT_FORMAT.JSON
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                       : "bg-slate-100/50 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-100"
                   }`}
@@ -552,9 +585,9 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                 onChange={(e) => setExportRange(e.target.value)}
                 className="w-full h-9 px-3 text-xs bg-card border border-border rounded-xl font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                <option value="month">Tháng hiện tại</option>
-                <option value="week">Tuần hiện tại</option>
-                <option value="all">Tất cả bài viết trong Lịch</option>
+                <option value={EXPORT_RANGE.MONTH}>Tháng hiện tại</option>
+                <option value={EXPORT_RANGE.WEEK}>Tuần hiện tại</option>
+                <option value={EXPORT_RANGE.ALL}>Tất cả bài viết trong Lịch</option>
               </select>
             </div>
 
@@ -605,16 +638,6 @@ export default function ImportSyncModal({ isOpen, onClose }) {
           </div>
         )}
       </div>
-
-      {/* Google Drive Picker Modal (Images 1, 2, 3) */}
-      <GoogleDrivePickerModal
-        isOpen={isDrivePickerOpen}
-        onClose={() => setIsDrivePickerOpen(false)}
-        onSelectFile={(file) => {
-          setSuccessMessage(`Đã nhập media "${file.name}" từ Google Drive!`)
-          setTimeout(() => setSuccessMessage(null), 2500)
-        }}
-      />
     </div>
   )
 }
