@@ -2,7 +2,19 @@ import React from "react"
 import { useTranslation } from "react-i18next"
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
-import { Sparkles, HardDrive, FileSpreadsheet, Plus, ChevronDown, BarChart2, PanelRightClose, PanelRightOpen, X } from "lucide-react"
+import {
+  Sparkles,
+  HardDrive,
+  FileSpreadsheet,
+  Plus,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  BarChart2,
+  PanelRightClose,
+  PanelRightOpen,
+  X,
+} from "lucide-react"
 import { useContentPlanner } from "@/store/useContentPlanner"
 
 const MOCK_BEST_TIMES = [
@@ -21,15 +33,20 @@ export default function PlannerInsightsPanel() {
 
   if (!isInsightsOpen) {
     return (
-      <div className="w-12 border-l border-border bg-card flex flex-col items-center py-4 gap-4 shrink-0 transition-all duration-300">
+      <div className="w-12 border-l border-border bg-card flex flex-col items-center py-3.5 gap-4 shrink-0 transition-all duration-300 select-none">
+        {/* Toggle Button using PanelRightOpen icon matching user request */}
         <button
           onClick={toggleInsights}
-          className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-all shadow-2xs"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
           title="Mở rộng Planner Insights"
         >
-          <BarChart2 className="h-5 w-5" />
+          <PanelRightOpen className="h-4 w-4 text-[hsl(var(--sidebar-primary))]" />
         </button>
-        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest [writing-mode:vertical-lr] rotate-180 opacity-60">
+
+        <span
+          onClick={toggleInsights}
+          className="text-[10px] font-extrabold text-muted-foreground tracking-widest [writing-mode:vertical-lr] rotate-180 opacity-70 hover:opacity-100 cursor-pointer mt-2"
+        >
           INSIGHTS & BÁO CÁO
         </span>
       </div>
@@ -37,20 +54,20 @@ export default function PlannerInsightsPanel() {
   }
 
   return (
-    <aside className="w-80 flex flex-col gap-5 border-l border-border bg-card p-5 shrink-0 overflow-y-auto transition-all duration-300">
-      {/* Title Header with Close Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-bold tracking-tight text-foreground">{t("planner.insights.title")}</h3>
-          <p className="text-xs text-muted-foreground">{t("planner.insights.subtitle")}</p>
-        </div>
+    <aside className="w-80 flex flex-col gap-5 border-l border-border bg-card p-5 shrink-0 overflow-y-auto transition-all duration-300 select-none">
+      {/* Header with PanelRightClose Toggle Button on Left */}
+      <div className="flex items-center gap-2.5 border-b border-border/40 pb-3">
         <button
           onClick={toggleInsights}
-          className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shrink-0"
           title="Thu gọn Planner Insights"
         >
           <PanelRightClose className="h-4 w-4" />
         </button>
+        <div>
+          <h3 className="text-sm font-extrabold tracking-tight text-foreground">{t("planner.insights.title")}</h3>
+          <p className="text-[11px] text-muted-foreground leading-none mt-0.5">{t("planner.insights.subtitle")}</p>
+        </div>
       </div>
 
       {/* 1. Best Times to Post (Recharts Bar Chart) */}

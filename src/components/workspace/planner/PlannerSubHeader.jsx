@@ -27,13 +27,25 @@ import {
   Sparkles,
   Lightbulb,
   BarChart2,
+  Folder,
+  Users,
+  Star,
+  Clock,
+  GripVertical,
+  FileText,
+  MoveUpRight,
+  Info,
+  Upload,
+  CheckCircle2,
 } from "lucide-react"
 
+import { toast } from "sonner"
 import ImportSyncModal from "./ImportSyncModal"
 import GoogleDrivePickerModal from "./GoogleDrivePickerModal"
 
-export default function PlannerSubHeader() {
+export default function PlannerSubHeader({ onOpenNewPostModal }) {
   const { t } = useTranslation()
+  const [plannerTab, setPlannerTab] = useState("calendar")
   const {
     viewMode,
     setViewMode,
@@ -66,6 +78,18 @@ export default function PlannerSubHeader() {
   const [activeIntegrationTab, setActiveIntegrationTab] = useState("drive")
   const [pickerYear, setPickerYear] = useState(currentDate.getFullYear())
 
+  // Drive state inside popover
+  const [driveCurrentFolder, setDriveCurrentFolder] = useState(null)
+  const [driveSearchQuery, setDriveSearchQuery] = useState("")
+
+  const PLANNER_SUB_TABS = [
+    { id: "calendar", label: t("planner.sub_tabs.calendar") },
+    { id: "list", label: t("planner.sub_tabs.list") },
+    { id: "library", label: t("planner.sub_tabs.library"), isDiamond: true },
+    { id: "autolists", label: t("planner.sub_tabs.autolists") },
+    { id: "deleted", label: t("planner.sub_tabs.deleted") },
+  ]
+
   // Dynamic date range format using i18n
   const formattedDateRange = formatDateRange(currentDate, viewMode, t)
 
@@ -90,6 +114,47 @@ export default function PlannerSubHeader() {
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
   ]
 
+  const mockDriveFiles = [
+    {
+      id: "f1",
+      name: "Campaign_Mockup_2026.png",
+      type: "image",
+      size: "2.4 MB",
+      date: "12 Th10, 2026",
+      url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80",
+    },
+    {
+      id: "f2",
+      name: "Promo_Video_Final.mp4",
+      type: "video",
+      size: "45.8 MB",
+      date: "Vừa xong",
+      url: "https://images.unsplash.com/photo-1536240478700-b869070f9279?w=400&q=80",
+    },
+    {
+      id: "f3",
+      name: "Strategy_Briefing.pdf",
+      type: "pdf",
+      size: "842 KB",
+      date: "10 Th10, 2026",
+      url: null,
+    },
+    {
+      id: "f4",
+      name: "Product_Demo_4K.mov",
+      type: "video",
+      size: "128.5 MB",
+      date: "08 Th10, 2026",
+      url: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&q=80",
+    },
+  ]
+
+  const handleDriveDragStart = (e, file) => {
+    e.dataTransfer.setData("application/json", JSON.stringify(file))
+    e.dataTransfer.setData("text/plain", file.name)
+    e.dataTransfer.effectAllowed = "copy"
+  }
+
   const handleSelectMonth = (monthIndex) => {
     const newDate = new Date(currentDate)
     newDate.setFullYear(pickerYear)
@@ -100,8 +165,38 @@ export default function PlannerSubHeader() {
   }
 
   return (
-    <div className="pb-3 border-b border-border">
-      {/* Single Line Clean Toolbar Layout */}
+    <div className="pb-3 border-b border-border space-y-3">
+      {/* 0. TOP SUB-NAV BAR (Auto-Scaling Sub-navigation Tabs) */}
+      <div className="border-b border-border/40 pb-1 px-1 text-sm select-none w-full">
+        <div className="flex items-center justify-between w-full overflow-x-auto no-scrollbar gap-2">
+          {PLANNER_SUB_TABS.map((tab) => {
+            const isActive = plannerTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setPlannerTab(tab.id)}
+                className={`flex items-center justify-center gap-1.5 font-bold relative pb-2.5 transition-all flex-1 text-center whitespace-nowrap min-w-max px-3 ${
+                  isActive
+                    ? "text-slate-900 dark:text-white"
+                    : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 font-semibold"
+                }`}
+              >
+                <span>{tab.label}</span>
+                {tab.isDiamond && (
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-lime-300 dark:bg-lime-900 text-[10px]">
+                    💎
+                  </span>
+                )}
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 dark:bg-white rounded-full animate-scale-in" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* 1. MAIN PLANNER TOOLBAR (Date Controls, View Switcher, Search, Filters, Actions) */}
       <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-2.5">
         {/* Group 1 (Left): Date Navigation + Date Title + Platform Filter */}
         <div className="flex items-center gap-2 shrink-0">
@@ -473,20 +568,236 @@ export default function PlannerSubHeader() {
             )}
           </div>
 
-          {/* Insights Panel Toggle Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleInsights}
-            className={`h-9 px-2.5 border-border shadow-2xs rounded-xl transition-all ${
-              isInsightsOpen
-                ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-bold"
-                : "bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground"
-            }`}
-            title={isInsightsOpen ? "Ẩn Planner Insights" : "Hiện Planner Insights"}
-          >
-            <BarChart2 className="h-4 w-4" />
-          </Button>
+          {/* SLEEK BLACK ICON BUTTON 🖼️ (Integrations Popover - Drive / Canva / Ideas) */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setIsIntegrationsOpen(!isIntegrationsOpen)
+                setIsCalendarSettingsOpen(false)
+                setIsPlatformDropdownOpen(false)
+                setIsDatePickerOpen(false)
+                setIsFilterOpen(false)
+              }}
+              className="h-9 w-9 bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-xs transition-transform active:scale-95 cursor-pointer shrink-0"
+              title="Media Hub & Integrations (Google Drive, Canva, Ideas)"
+            >
+              <ImageIcon className="h-4 w-4 text-white" />
+            </button>
+
+            {/* INTEGRATIONS POPOVER */}
+            {isIntegrationsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/5"
+                  onClick={() => setIsIntegrationsOpen(false)}
+                />
+
+                <div className="absolute right-0 top-full mt-2 w-[340px] sm:w-[380px] p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 z-50 animate-scale-in select-none text-left">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 flex items-center justify-center font-bold text-xs shadow-xs">
+                        💎
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                          INTEGRATIONS & MEDIA HUB
+                        </h3>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                          Import and sync media directly
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsIntegrationsOpen(false)}
+                      className="p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl">
+                    <button
+                      onClick={() => setActiveIntegrationTab("drive")}
+                      className={`py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                        activeIntegrationTab === "drive"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      <HardDrive className="h-3.5 w-3.5 text-blue-500" />
+                      <span>Drive</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveIntegrationTab("canva")}
+                      className={`py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                        activeIntegrationTab === "canva"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      <span className="w-3.5 h-3.5 rounded-full bg-[#00C4CC] text-white text-[9px] font-black flex items-center justify-center">
+                        C
+                      </span>
+                      <span>Canva</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveIntegrationTab("ideas")}
+                      className={`py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                        activeIntegrationTab === "ideas"
+                          ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                      }`}
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                      <span>Ideas</span>
+                    </button>
+                  </div>
+
+                  {/* Content Panels */}
+                  <div>
+                    {activeIntegrationTab === "drive" && (
+                      <div className="space-y-3 animate-fade-in text-left">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+                            <Folder className="h-3.5 w-3.5 text-blue-500" />
+                            <span
+                              className="hover:underline cursor-pointer"
+                              onClick={() => setDriveCurrentFolder(null)}
+                            >
+                              My Drive
+                            </span>
+                            {driveCurrentFolder && (
+                              <>
+                                <ChevronRight className="h-3 w-3 text-slate-400" />
+                                <span className="text-indigo-600 dark:text-indigo-400 truncate max-w-[100px]">
+                                  {driveCurrentFolder}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="Tìm tệp Drive..."
+                            value={driveSearchQuery}
+                            onChange={(e) => setDriveSearchQuery(e.target.value)}
+                            className="px-2.5 py-1 text-[11px] rounded-lg border border-border bg-slate-50 dark:bg-slate-800 w-28 focus:w-36 transition-all focus:outline-none"
+                          />
+                        </div>
+
+                        {!driveCurrentFolder && (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button
+                              onClick={() => setDriveCurrentFolder("Social Media 2026")}
+                              className="p-2 rounded-xl border border-border bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors text-left group"
+                            >
+                              <Folder className="h-4 w-4 text-blue-500 group-hover:scale-110 transition-transform shrink-0" />
+                              <div className="truncate">
+                                <p className="text-[11px] font-bold text-foreground truncate">Social Media 2026</p>
+                                <p className="text-[9px] text-muted-foreground">12 tệp</p>
+                              </div>
+                            </button>
+                            <button
+                              onClick={() => setDriveCurrentFolder("Video Assets")}
+                              className="p-2 rounded-xl border border-border bg-slate-50/70 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors text-left group"
+                            >
+                              <Folder className="h-4 w-4 text-amber-500 group-hover:scale-110 transition-transform shrink-0" />
+                              <div className="truncate">
+                                <p className="text-[11px] font-bold text-foreground truncate">Video Assets</p>
+                                <p className="text-[9px] text-muted-foreground">8 tệp</p>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
+                          {mockDriveFiles
+                            .filter((f) => f.name.toLowerCase().includes(driveSearchQuery.toLowerCase()))
+                            .map((file) => (
+                              <div
+                                key={file.id}
+                                draggable={true}
+                                onDragStart={(e) => handleDriveDragStart(e, file)}
+                                className="p-2 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 hover:border-indigo-300 dark:hover:border-indigo-800 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing transition-all group"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <GripVertical className="h-3.5 w-3.5 text-slate-300 group-hover:text-indigo-400 shrink-0" />
+                                  {file.url ? (
+                                    <img
+                                      src={file.url}
+                                      alt={file.name}
+                                      className="w-8 h-8 rounded-lg object-cover shrink-0 border border-border"
+                                    />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-muted-foreground shrink-0">
+                                      <FileText className="h-3.5 w-3.5" />
+                                    </div>
+                                  )}
+                                  <div className="truncate">
+                                    <h5 className="text-[11px] font-bold text-foreground truncate group-hover:text-indigo-600">
+                                      {file.name}
+                                    </h5>
+                                    <p className="text-[9px] text-muted-foreground">
+                                      {file.size} • {file.date}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                  Kéo vào Lịch
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+
+                        <div className="p-2 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-[9px] font-extrabold tracking-wider uppercase flex items-center justify-center gap-1.5 rounded-xl shrink-0">
+                          <Info className="h-3 w-3 text-indigo-400 shrink-0" />
+                          <span>KÉO THẢ TỆP VÀO LỊCH ĐỂ THÊM BÀI ĐĂNG</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeIntegrationTab === "canva" && (
+                      <div className="space-y-4 animate-fade-in text-center py-2">
+                        <div className="w-16 h-16 mx-auto rounded-full bg-[#00C4CC]/10 text-[#00C4CC] flex items-center justify-center font-black text-xl">
+                          C
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-foreground uppercase">CONNECT CANVA</h4>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">Tạo và nhập trực tiếp hình ảnh thiết kế từ Canva vào Lịch bài đăng.</p>
+                        </div>
+                        <button
+                          onClick={() => setIsIntegrationsOpen(false)}
+                          className="w-full py-2 rounded-xl bg-[#00C4CC] hover:bg-[#00b2b9] text-white font-extrabold text-xs shadow-xs"
+                        >
+                          Kết nối Canva
+                        </button>
+                      </div>
+                    )}
+
+                    {activeIntegrationTab === "ideas" && (
+                      <div className="space-y-4 animate-fade-in text-center py-2">
+                        <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
+                          <Sparkles className="w-7 h-7" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-foreground uppercase">AI CONTENT ASSISTANT</h4>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">Gợi ý tưởng bài viết sáng tạo tự động bằng Trí tuệ nhân tạo.</p>
+                        </div>
+                        <button
+                          onClick={() => setIsIntegrationsOpen(false)}
+                          className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs shadow-xs"
+                        >
+                          Khám phá gợi ý AI
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Settings Menu Button */}
           <div className="relative">
@@ -515,41 +826,6 @@ export default function PlannerSubHeader() {
 
                 <div className="absolute right-0 top-full mt-2 w-64 py-2 px-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-0.5 z-50 animate-scale-in text-xs">
                   <button
-                    onClick={() => setIsCalendarSettingsOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 text-muted-foreground">
-                      <ZoomIn className="h-4 w-4" />
-                      <span className="text-foreground">Calendar zoom</span>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-
-                  <button
-                    onClick={() => setIsCalendarSettingsOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 text-muted-foreground">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span className="text-foreground">Calendar view</span>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-
-                  <button
-                    onClick={() => setIsCalendarSettingsOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 text-muted-foreground">
-                      <Layers className="h-4 w-4" />
-                      <span className="text-foreground">Social calendars</span>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  </button>
-
-                  <div className="my-1 border-t border-border/60" />
-
-                  <button
                     onClick={() => {
                       setIsCalendarSettingsOpen(false)
                       setIsImportModalOpen(true)
@@ -561,239 +837,22 @@ export default function PlannerSubHeader() {
                       <span className="text-foreground font-bold">Quản lý & Xuất nhập Dữ liệu</span>
                     </div>
                   </button>
-
-                  <div className="my-1 border-t border-border/60" />
-
-                  <button
-                    onClick={() => setIsCalendarSettingsOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 text-muted-foreground">
-                      <Grid className="h-4 w-4" />
-                      <span className="text-foreground">Preview feed</span>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setIsCalendarSettingsOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 text-muted-foreground">
-                      <Bell className="h-4 w-4" />
-                      <span className="text-foreground">Notifications</span>
-                    </div>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* SLEEK BLACK ICON BUTTON 🖼️ (Integrations Popover - Drive / Canva / Ideas) */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setIsIntegrationsOpen(!isIntegrationsOpen)
-                setIsCalendarSettingsOpen(false)
-                setIsPlatformDropdownOpen(false)
-                setIsDatePickerOpen(false)
-                setIsFilterOpen(false)
-              }}
-              className="h-9 w-9 bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-sm transition-transform active:scale-95 cursor-pointer shrink-0"
-              title="Media Hub & Integrations (Google Drive, Canva, Ideas)"
-            >
-              <ImageIcon className="h-4 w-4 text-white" />
-            </button>
-
-            {/* INTEGRATIONS POPOVER (Matching Image 1 EXACTLY) */}
-            {isIntegrationsOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40 bg-black/5"
-                  onClick={() => setIsIntegrationsOpen(false)}
-                />
-
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-84 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl rounded-3xl overflow-hidden z-50 animate-scale-in text-left">
-                  {/* Top Header Tabs */}
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 h-12 px-4 bg-slate-50/50 dark:bg-slate-800/40">
-                    <div className="flex items-center gap-6 h-full">
-                      {/* Tab 1: Google Drive */}
-                      <button
-                        onClick={() => setActiveIntegrationTab("drive")}
-                        className={`h-full flex items-center gap-1.5 relative px-1 transition-all ${
-                          activeIntegrationTab === "drive" ? "opacity-100" : "opacity-40 hover:opacity-75"
-                        }`}
-                      >
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                          <path d="M19.43 12.98L12 21.36L4.57 12.98L6.87 9.17H17.13L19.43 12.98Z" fill="#4CAF50" />
-                          <path d="M15.43 2H8.57L5.13 7.82H18.87L15.43 2Z" fill="#FFC107" />
-                          <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
-                        </svg>
-                        {activeIntegrationTab === "drive" && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 dark:bg-white rounded-full" />
-                        )}
-                      </button>
-
-                      {/* Tab 2: Canva */}
-                      <button
-                        onClick={() => setActiveIntegrationTab("canva")}
-                        className={`h-full flex items-center gap-1.5 relative px-1 transition-all ${
-                          activeIntegrationTab === "canva" ? "opacity-100" : "opacity-40 hover:opacity-75"
-                        }`}
-                      >
-                        <div className="w-5 h-5 rounded-full bg-[#00C4CC] text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs">
-                          C
-                        </div>
-                        {activeIntegrationTab === "canva" && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 dark:bg-white rounded-full" />
-                        )}
-                      </button>
-
-                      {/* Tab 3: Ideas */}
-                      <button
-                        onClick={() => setActiveIntegrationTab("ideas")}
-                        className={`h-full flex items-center gap-1.5 relative px-1 transition-all ${
-                          activeIntegrationTab === "ideas" ? "opacity-100" : "opacity-40 hover:opacity-75"
-                        }`}
-                      >
-                        <Lightbulb className="w-5 h-5 text-amber-500" />
-                        {activeIntegrationTab === "ideas" && (
-                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 dark:bg-white rounded-full" />
-                        )}
-                      </button>
-                    </div>
-
-                    <button
-                      onClick={() => setIsIntegrationsOpen(false)}
-                      className="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {/* Tab Body Contents */}
-                  <div className="p-6 text-center">
-                    {activeIntegrationTab === "drive" && (
-                      <div className="space-y-5 animate-fade-in">
-                        {/* Sub Header Badge */}
-                        <div className="flex items-center justify-center gap-2">
-                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                            <path d="M19.43 12.98L12 21.36L4.57 12.98L6.87 9.17H17.13L19.43 12.98Z" fill="#4CAF50" />
-                            <path d="M15.43 2H8.57L5.13 7.82H18.87L15.43 2Z" fill="#FFC107" />
-                            <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
-                          </svg>
-                          <span className="text-[10px] font-extrabold bg-slate-900 text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
-                            BETA
-                          </span>
-                        </div>
-
-                        {/* Large Circle Illustration */}
-                        <div className="w-24 h-24 mx-auto rounded-full bg-blue-50/70 dark:bg-slate-800/80 flex items-center justify-center shadow-inner">
-                          <svg className="w-14 h-14" viewBox="0 0 24 24" fill="none">
-                            <path d="M19.43 12.98L12 21.36L4.57 12.98L6.87 9.17H17.13L19.43 12.98Z" fill="#4CAF50" />
-                            <path d="M15.43 2H8.57L5.13 7.82H18.87L15.43 2Z" fill="#FFC107" />
-                            <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
-                          </svg>
-                        </div>
-
-                        {/* Description */}
-                        <div>
-                          <h4 className="text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase mb-1">
-                            CONNECT GOOGLE DRIVE
-                          </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold max-w-[220px] mx-auto leading-relaxed">
-                            Upgrade to a Premium plan and create your content using Google Drive!
-                          </p>
-                        </div>
-
-                        {/* Action Button */}
-                        <button
-                          onClick={() => {
-                            setIsIntegrationsOpen(false)
-                            setIsDrivePickerOpen(true)
-                          }}
-                          className="w-full py-2.5 px-6 rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 hover:opacity-95 text-white font-black text-xs shadow-md transition-transform active:scale-98 flex items-center justify-center gap-1.5"
-                        >
-                          <span>Get premium</span>
-                          <span>💎</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {activeIntegrationTab === "canva" && (
-                      <div className="space-y-5 animate-fade-in">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-5 h-5 rounded-full bg-[#00C4CC] text-white font-extrabold text-[10px] flex items-center justify-center">
-                            C
-                          </div>
-                          <span className="text-[10px] font-extrabold bg-[#00C4CC] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
-                            CANVA
-                          </span>
-                        </div>
-
-                        <div className="w-24 h-24 mx-auto rounded-full bg-teal-50 dark:bg-slate-800/80 flex items-center justify-center shadow-inner">
-                          <div className="w-14 h-14 rounded-full bg-[#00C4CC] text-white font-black text-2xl flex items-center justify-center shadow-md">
-                            C
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase mb-1">
-                            CONNECT CANVA
-                          </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold max-w-[220px] mx-auto leading-relaxed">
-                            Design and import beautiful social graphics directly from your Canva workspace!
-                          </p>
-                        </div>
-
-                        <button
-                          onClick={() => setIsIntegrationsOpen(false)}
-                          className="w-full py-2.5 px-6 rounded-full bg-[#00C4CC] hover:bg-[#00b2b9] text-white font-black text-xs shadow-md transition-transform active:scale-98 flex items-center justify-center gap-1.5"
-                        >
-                          <span>Get premium</span>
-                          <span>💎</span>
-                        </button>
-                      </div>
-                    )}
-
-                    {activeIntegrationTab === "ideas" && (
-                      <div className="space-y-5 animate-fade-in">
-                        <div className="flex items-center justify-center gap-2">
-                          <Lightbulb className="w-5 h-5 text-amber-500" />
-                          <span className="text-[10px] font-extrabold bg-amber-500 text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
-                            AI IDEAS
-                          </span>
-                        </div>
-
-                        <div className="w-24 h-24 mx-auto rounded-full bg-amber-50 dark:bg-slate-800/80 flex items-center justify-center shadow-inner">
-                          <Sparkles className="w-12 h-12 text-amber-500" />
-                        </div>
-
-                        <div>
-                          <h4 className="text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase mb-1">
-                            CONTENT ASSISTANT
-                          </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold max-w-[220px] mx-auto leading-relaxed">
-                            Never run out of creative post ideas with AI-powered content recommendations!
-                          </p>
-                        </div>
-
-                        <button
-                          onClick={() => setIsIntegrationsOpen(false)}
-                          className="w-full py-2.5 px-6 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-md transition-transform active:scale-98 flex items-center justify-center gap-1.5"
-                        >
-                          <span>Explore Ideas</span>
-                          <span>✨</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </>
             )}
           </div>
 
           {/* Primary CTA */}
-          <Button className="h-9 px-3.5 text-xs font-bold rounded-xl bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary)/0.9)] text-white gap-1.5 shadow-xs shrink-0">
+          <Button
+            onClick={() => {
+              if (typeof onOpenNewPostModal === "function") {
+                onOpenNewPostModal()
+              } else {
+                toast.info("Mở trình tạo bài viết mới")
+              }
+            }}
+            className="h-9 px-3.5 text-xs font-bold rounded-xl bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary)/0.9)] text-white gap-1.5 shadow-xs shrink-0"
+          >
             <Plus className="h-4 w-4" />
             <span className="whitespace-nowrap">{t("planner.actions.create_post")}</span>
           </Button>

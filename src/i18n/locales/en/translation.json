@@ -32,11 +32,18 @@
       "video": "Video",
       "carousel": "Carousel"
     },
+    "sub_tabs": {
+      "calendar": "Calendar",
+      "list": "Posts List",
+      "library": "Posts Library",
+      "autolists": "Autolists",
+      "deleted": "Deleted Posts"
+    },
     "view": {
       "month": "Month",
       "week": "Week",
       "day": "Day",
-      "list": "List"
+      "list": "Flat List"
     },
     "actions": {
       "today": "Today",

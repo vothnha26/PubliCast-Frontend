@@ -32,11 +32,18 @@
       "video": "Video",
       "carousel": "Carousel"
     },
+    "sub_tabs": {
+      "calendar": "Lịch bài đăng",
+      "list": "Danh sách bài viết",
+      "library": "Thư viện bài viết",
+      "autolists": "Danh sách tự động",
+      "deleted": "Bài viết đã xóa"
+    },
     "view": {
       "month": "Tháng",
       "week": "Tuần",
       "day": "Ngày",
-      "list": "Danh sách"
+      "list": "Dạng danh sách"
     },
     "actions": {
       "today": "Hôm nay",
