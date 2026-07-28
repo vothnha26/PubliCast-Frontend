@@ -2,6 +2,16 @@
 @import "tw-animate-css";
 @import "./assets/styles/theme.css";
 
+/*
+ * Tailwind v4 mặc định resolve `dark:` theo media query `prefers-color-scheme`,
+ * KHÔNG theo class .dark trên <html> — trong khi useThemeStore.js (Light/Dark
+ * toggle ở Sidebar) set/remove chính xác class .dark trên root. Thiếu dòng này,
+ * mọi `dark:*` trong toàn app bám theo cài đặt hệ điều hành thay vì nút bấm
+ * trong UI, gây lệch màu (VD: badge TikTok bị áp nhầm dark:text-slate-100 dù
+ * app đang ở Light mode, vì OS đang ở dark).
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   * {
     border-color: hsl(var(--border));

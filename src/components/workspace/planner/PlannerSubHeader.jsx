@@ -4,6 +4,7 @@ import { CALENDAR_VIEW_MODE, SOCIAL_PLATFORM } from "@/constants/planner"
 import { useContentPlanner } from "@/store/useContentPlanner"
 import { formatDateRange } from "@/utils/dateUtils"
 import { Button } from "@/components/ui/button"
+import { PlatformIcon } from "@/components/shared/PlatformIcon"
 import {
   ChevronLeft,
   ChevronRight,
@@ -48,9 +49,9 @@ export default function PlannerSubHeader() {
     <div className="space-y-3 pb-3 border-b border-border select-none">
       {/* Scalable Header Control Row */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        {/* Left: Date Navigation & Range Title */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center rounded-lg border border-border bg-card p-0.5 shadow-2xs">
+        {/* Left: Date Navigation & Range Title (Fixed Width Container to prevent Layout Shift) */}
+        <div className="flex items-center gap-3 min-w-[290px] shrink-0">
+          <div className="flex items-center rounded-lg border border-border bg-card p-0.5 shadow-2xs shrink-0">
             <button
               onClick={() => navigateDate("prev")}
               className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -73,8 +74,8 @@ export default function PlannerSubHeader() {
             </button>
           </div>
 
-          <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5 text-[hsl(var(--sidebar-primary))]" />
+          <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-2 shrink-0">
+            <CalendarIcon className="h-5 w-5 text-[hsl(var(--sidebar-primary))] shrink-0" />
             <span>{formattedDateRange}</span>
           </h2>
         </div>
@@ -198,7 +199,7 @@ export default function PlannerSubHeader() {
         </div>
       </div>
 
-      {/* Platform Filter Pills with Crisp Neutral Outline (No blurry opacity look) */}
+      {/* Platform Filter Pills with Sleek & Modern Aesthetic */}
       <div className="flex items-center gap-2 overflow-x-auto pt-1">
         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
           {t("planner.labels.platforms")}
@@ -209,13 +210,17 @@ export default function PlannerSubHeader() {
             <button
               key={platform.id}
               onClick={() => togglePlatform(platform.id)}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all duration-150 ${
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border transition-all duration-150 ${
                 isSelected
-                  ? `${platform.badgeClass} ring-1 ring-current shadow-2xs`
-                  : "bg-card border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-400 hover:text-foreground"
+                  ? "bg-card border-slate-300 dark:border-slate-700 text-foreground shadow-2xs ring-1 ring-slate-400/20"
+                  : "bg-slate-100/60 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-200/60 dark:hover:bg-slate-800 hover:text-foreground"
               }`}
             >
-              <span className={`h-2 w-2 rounded-full ${isSelected ? platform.dotClass : "bg-slate-400 dark:bg-slate-600"}`} />
+              <PlatformIcon
+                platform={platform.iconName}
+                size={15}
+                className={isSelected ? "shrink-0" : "shrink-0 opacity-40 grayscale transition-opacity"}
+              />
               <span>{platform.name}</span>
             </button>
           )

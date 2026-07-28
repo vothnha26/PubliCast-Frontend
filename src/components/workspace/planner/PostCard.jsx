@@ -2,6 +2,7 @@ import React from "react"
 import { useTranslation } from "react-i18next"
 import { POST_STATUS, SOCIAL_PLATFORM } from "@/constants/planner"
 import { Image as ImageIcon, X } from "lucide-react"
+import { PlatformIcon } from "@/components/shared/PlatformIcon"
 
 export default function PostCard({ post, variant = "full", onRemove }) {
   const { t } = useTranslation()
@@ -28,11 +29,12 @@ export default function PostCard({ post, variant = "full", onRemove }) {
 
   const statusConfig = POST_STATUS[post.status] || POST_STATUS.SCHEDULED
   const platformConfig = SOCIAL_PLATFORM[post.platform] || SOCIAL_PLATFORM.INSTAGRAM
+  const platformIconName = platformConfig.iconName
 
   if (variant === "compact") {
     return (
       <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-card border border-border shadow-2xs text-[11px] font-medium truncate">
-        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${platformConfig.dotClass}`} />
+        <PlatformIcon platform={platformIconName} size={12} variant="flat" />
         <span className="truncate">{post.title}</span>
       </div>
     )
@@ -58,10 +60,10 @@ export default function PostCard({ post, variant = "full", onRemove }) {
             <ImageIcon className="h-6 w-6" />
           </div>
         )}
-        {/* Platform Badge Overlay */}
-        <span className={`absolute top-1.5 right-1.5 h-4 w-4 rounded-md ${platformConfig.dotClass} flex items-center justify-center text-white text-[9px] font-bold shadow-xs group-hover:scale-110 transition-transform`}>
-          {platformConfig.name.charAt(0)}
-        </span>
+        {/* Platform Badge Overlay — always visible (not hover-only), real brand icon */}
+        <div className="absolute top-1.5 right-1.5 shadow-xs rounded-md group-hover:scale-110 transition-transform bg-white/90 dark:bg-slate-900/90 p-0.5">
+          <PlatformIcon platform={platformIconName} size={16} variant="color" />
+        </div>
       </div>
 
       {/* Title */}
