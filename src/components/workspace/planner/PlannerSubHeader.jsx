@@ -9,11 +9,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
-  Filter,
   Plus,
   Search,
   X,
   SlidersHorizontal,
+  ChevronDown,
 } from "lucide-react"
 
 export default function PlannerSubHeader() {
@@ -22,6 +22,7 @@ export default function PlannerSubHeader() {
     viewMode,
     setViewMode,
     currentDate,
+    setCurrentDate,
     navigateDate,
     selectedPlatforms,
     togglePlatform,
@@ -31,6 +32,8 @@ export default function PlannerSubHeader() {
   } = useContentPlanner()
 
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [pickerYear, setPickerYear] = useState(currentDate.getFullYear())
 
   // Dynamic date range format using i18n
   const formattedDateRange = formatDateRange(currentDate, viewMode, t)
@@ -45,12 +48,26 @@ export default function PlannerSubHeader() {
   const totalPlatforms = Object.keys(SOCIAL_PLATFORM).length
   const activeFiltersCount = totalPlatforms - selectedPlatforms.length
 
+  const monthKeys = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ]
+
+  const handleSelectMonth = (monthIndex) => {
+    const newDate = new Date(currentDate)
+    newDate.setFullYear(pickerYear)
+    newDate.setMonth(monthIndex)
+    newDate.setDate(1)
+    setCurrentDate(newDate)
+    setIsDatePickerOpen(false)
+  }
+
   return (
     <div className="space-y-3 pb-3 border-b border-border select-none">
-      {/* Scalable Header Control Row */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        {/* Left: Date Navigation & Range Title (Fixed Width Container to prevent Layout Shift) */}
-        <div className="flex items-center gap-3 min-w-[290px] shrink-0">
+      {/* 3-Column Grid Layout: Pinned Exact Center View Switcher (0 Layout Shift!) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-4">
+        {/* Column 1 (Left): Date Navigation & Clickable Date Title Popover */}
+        <div className="flex items-center gap-3 justify-start relative">
           <div className="flex items-center rounded-lg border border-border bg-card p-0.5 shadow-2xs shrink-0">
             <button
               onClick={() => navigateDate("prev")}
@@ -74,31 +91,111 @@ export default function PlannerSubHeader() {
             </button>
           </div>
 
-          <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-2 shrink-0">
-            <CalendarIcon className="h-5 w-5 text-[hsl(var(--sidebar-primary))] shrink-0" />
-            <span>{formattedDateRange}</span>
-          </h2>
+          {/* Interactive Date Picker Trigger */}
+          <button
+            onClick={() => {
+              setPickerYear(currentDate.getFullYear())
+              setIsDatePickerOpen(!isDatePickerOpen)
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-transparent hover:border-border hover:bg-card text-foreground transition-all group"
+            title="Lọc / Chọn lịch cụ thể"
+          >
+            <CalendarIcon className="h-4 w-4 text-[hsl(var(--sidebar-primary))] shrink-0" />
+            <span className="text-base font-bold tracking-tight">{formattedDateRange}</span>
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-transform duration-200" />
+          </button>
+
+          {/* Date Picker Popover */}
+          {isDatePickerOpen && (
+            <div className="absolute left-32 top-11 w-72 p-4 rounded-2xl bg-card border border-border shadow-xl space-y-3 z-50 animate-scale-in">
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5 text-[hsl(var(--sidebar-primary))]" />
+                  <span>Chọn thời gian lịch</span>
+                </span>
+                <button
+                  onClick={() => setIsDatePickerOpen(false)}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {/* Year Selector */}
+              <div className="flex items-center justify-between px-2 py-1 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                <button
+                  onClick={() => setPickerYear((y) => y - 1)}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-sm font-extrabold text-foreground">{pickerYear}</span>
+                <button
+                  onClick={() => setPickerYear((y) => y + 1)}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Month Selector Grid */}
+              <div className="grid grid-cols-3 gap-1.5">
+                {monthKeys.map((mKey, idx) => {
+                  const isCurrentSelected =
+                    currentDate.getFullYear() === pickerYear && currentDate.getMonth() === idx
+                  return (
+                    <button
+                      key={mKey}
+                      onClick={() => handleSelectMonth(idx)}
+                      className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                        isCurrentSelected
+                          ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                          : "bg-slate-100/50 dark:bg-slate-800/40 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {t(`planner.months.${mKey}`)}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="pt-2 border-t border-border flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    setCurrentDate(new Date())
+                    setIsDatePickerOpen(false)
+                  }}
+                  className="text-xs font-bold text-[hsl(var(--sidebar-primary))] hover:underline"
+                >
+                  {t("planner.actions.today")}
+                </button>
+                <span className="text-[10px] text-muted-foreground">Click để chuyển lịch</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Center: Segmented View Mode Switcher */}
-        <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-2xs">
-          {viewOptions.map((opt) => (
-            <button
-              key={opt.mode}
-              onClick={() => setViewMode(opt.mode)}
-              className={`px-3.5 py-1 rounded-lg text-xs font-bold transition-all duration-150 ${
-                viewMode === opt.mode
-                  ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
-                  : "text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800/50"
-              }`}
-            >
-              {t(opt.labelKey)}
-            </button>
-          ))}
+        {/* Column 2 (Center): Segmented View Mode Switcher (Pinned Exact Center) */}
+        <div className="flex items-center justify-center">
+          <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-2xs">
+            {viewOptions.map((opt) => (
+              <button
+                key={opt.mode}
+                onClick={() => setViewMode(opt.mode)}
+                className={`px-3.5 py-1 rounded-lg text-xs font-bold transition-all duration-150 ${
+                  viewMode === opt.mode
+                    ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800/50"
+                }`}
+              >
+                {t(opt.labelKey)}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Right: Search + Filter Popover + Primary CTA */}
-        <div className="flex items-center gap-2.5 relative">
+        {/* Column 3 (Right): Search + Filter Popover + Primary CTA */}
+        <div className="flex items-center gap-2.5 justify-end relative">
           {/* Search Box */}
           <div className="relative flex items-center">
             <Search className="h-3.5 w-3.5 absolute left-3 text-muted-foreground pointer-events-none" />
@@ -107,7 +204,7 @@ export default function PlannerSubHeader() {
               value={searchQuery || ""}
               onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
               placeholder={t("planner.search_placeholder")}
-              className="h-9 w-40 sm:w-48 pl-8 pr-3 text-xs bg-card border border-border rounded-lg placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[hsl(var(--sidebar-primary))] transition-all"
+              className="h-9 w-36 sm:w-44 pl-8 pr-3 text-xs bg-card border border-border rounded-lg placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[hsl(var(--sidebar-primary))] transition-all"
             />
           </div>
 
@@ -158,7 +255,7 @@ export default function PlannerSubHeader() {
                         className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer text-xs"
                       >
                         <div className="flex items-center gap-2">
-                          <span className={`h-2.5 w-2.5 rounded-full ${platform.dotClass}`} />
+                          <PlatformIcon platform={platform.iconName} size={14} />
                           <span className="font-medium text-foreground">{platform.name}</span>
                         </div>
                         <input

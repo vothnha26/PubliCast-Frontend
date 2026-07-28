@@ -13,6 +13,8 @@ export const useContentPlanner = create((set, get) => ({
 
   setViewMode: (viewMode) => set({ viewMode }),
 
+  setCurrentDate: (currentDate) => set({ currentDate }),
+
   setSearchQuery: (searchQuery) => set({ searchQuery }),
 
   togglePlatform: (platformId) => {
