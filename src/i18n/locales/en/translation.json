@@ -35,10 +35,43 @@
       "filters": "Filters",
       "create_post": "New Post",
       "export_report": "Export Report",
-      "add_integration": "Add Integration"
+      "add_integration": "Add Integration",
+      "clear_all": "Clear Filters"
     },
+    "search_placeholder": "Search posts...",
     "labels": {
-      "platforms": "PLATFORMS:"
+      "platforms": "PLATFORMS:",
+      "statuses": "STATUSES:",
+      "today_caps": "TODAY",
+      "posts_count": "{{count}} POSTS",
+      "add_post_at": "+ Add post at {{time}}",
+      "peak_engagement": "Peak engagement expected at 11:30 AM Wednesday.",
+      "quick_preview": "Quick Preview",
+      "scheduled_for": "Scheduled for",
+      "platform_label": "Platform"
+    },
+    "weekdays": {
+      "MON": "MON",
+      "TUE": "TUE",
+      "WED": "WED",
+      "THU": "THU",
+      "FRI": "FRI",
+      "SAT": "SAT",
+      "SUN": "SUN"
+    },
+    "months": {
+      "Jan": "Jan",
+      "Feb": "Feb",
+      "Mar": "Mar",
+      "Apr": "Apr",
+      "May": "May",
+      "Jun": "Jun",
+      "Jul": "Jul",
+      "Aug": "Aug",
+      "Sep": "Sep",
+      "Oct": "Oct",
+      "Nov": "Nov",
+      "Dec": "Dec"
     },
     "insights": {
       "title": "Planner Insights",

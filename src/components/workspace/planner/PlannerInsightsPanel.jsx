@@ -55,7 +55,7 @@ export default function PlannerInsightsPanel() {
         </div>
 
         <p className="text-[11px] text-muted-foreground italic text-center pt-1 border-t border-border/60">
-          Peak engagement expected at 11:30 AM Wednesday.
+          {t("planner.labels.peak_engagement")}
         </p>
       </div>
 

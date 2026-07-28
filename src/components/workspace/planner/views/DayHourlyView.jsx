@@ -1,9 +1,9 @@
 import React from "react"
+import { useTranslation } from "react-i18next"
 import PostCard from "../PostCard"
-import { isSameDay } from "@/utils/dateUtils"
+import { isSameDay, WEEKDAY_KEYS } from "@/utils/dateUtils"
 
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-const WEEKDAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
 
 function formatHour(hour) {
   if (hour === 12) return "12 PM"
@@ -12,7 +12,10 @@ function formatHour(hour) {
 }
 
 export default function DayHourlyView({ posts = [], currentDate = new Date() }) {
-  const dayName = WEEKDAY_NAMES[currentDate.getDay()]
+  const { t } = useTranslation()
+
+  const dayKey = WEEKDAY_KEYS[currentDate.getDay()]
+  const dayName = t(`planner.weekdays.${dayKey}`)
   const dateNum = currentDate.getDate()
   const isToday = isSameDay(currentDate, new Date())
 
@@ -63,8 +66,8 @@ export default function DayHourlyView({ posts = [], currentDate = new Date() }) 
                     ))}
                   </div>
                 ) : (
-                  <div className="h-full w-full rounded-xl border border-dashed border-border/40 flex items-center justify-center text-muted-foreground/30 text-xs hover:border-indigo-400/50 hover:text-indigo-500 transition-colors cursor-pointer">
-                    + Add Post at {formatHour(hour)}
+                  <div className="h-full w-full rounded-xl border border-dashed border-border/40 flex items-center justify-center text-muted-foreground/40 text-xs hover:border-indigo-400/50 hover:text-indigo-500 transition-colors cursor-pointer font-medium">
+                    {t("planner.labels.add_post_at", { time: formatHour(hour) })}
                   </div>
                 )}
               </div>

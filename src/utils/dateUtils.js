@@ -6,12 +6,15 @@ export function isSameDay(date1, date2) {
   )
 }
 
-const WEEKDAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+export const WEEKDAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"]
+const MONTH_KEYS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+]
 
 export function getWeekDays(currentDate) {
   const curr = new Date(currentDate)
   const dayOfWeek = curr.getDay() // 0 = Sun
-  // Calculate Monday as start of week (or Sunday depending on locale, let's use Mon-Sun layout)
   const distanceToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
   const monday = new Date(curr)
   monday.setDate(curr.getDate() + distanceToMon)
@@ -28,7 +31,7 @@ export function getWeekDays(currentDate) {
     const fullDate = `${year}-${month}-${dateNum}`
 
     return {
-      day: WEEKDAY_NAMES[d.getDay()],
+      dayKey: WEEKDAY_KEYS[d.getDay()],
       date: String(d.getDate()),
       fullDate,
       rawDate: d,
@@ -37,21 +40,20 @@ export function getWeekDays(currentDate) {
   })
 }
 
-export function formatDateRange(currentDate, viewMode) {
+export function formatDateRange(currentDate, viewMode, t) {
   if (!currentDate) return ""
 
-  const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-  ]
+  const monthKey = MONTH_KEYS[currentDate.getMonth()]
+  const monthName = t ? t(`planner.months.${monthKey}`) : monthKey
 
   if (viewMode === "MONTH") {
-    return `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`
+    return `${monthName}, ${currentDate.getFullYear()}`
   }
 
   if (viewMode === "DAY") {
-    const dayName = WEEKDAY_NAMES[currentDate.getDay()]
-    return `${dayName}, ${months[currentDate.getMonth()]} ${currentDate.getDate()}, ${currentDate.getFullYear()}`
+    const dayKey = WEEKDAY_KEYS[currentDate.getDay()]
+    const dayName = t ? t(`planner.weekdays.${dayKey}`) : dayKey
+    return `${dayName}, ${currentDate.getDate()} ${monthName} ${currentDate.getFullYear()}`
   }
 
   // Week view
@@ -59,9 +61,14 @@ export function formatDateRange(currentDate, viewMode) {
   const first = weekDays[0].rawDate
   const last = weekDays[6].rawDate
 
+  const firstMonthKey = MONTH_KEYS[first.getMonth()]
+  const lastMonthKey = MONTH_KEYS[last.getMonth()]
+  const firstMonthName = t ? t(`planner.months.${firstMonthKey}`) : firstMonthKey
+  const lastMonthName = t ? t(`planner.months.${lastMonthKey}`) : lastMonthKey
+
   if (first.getMonth() === last.getMonth()) {
-    return `${months[first.getMonth()]} ${first.getDate()} – ${last.getDate()}, ${first.getFullYear()}`
+    return `${first.getDate()} – ${last.getDate()} ${firstMonthName}, ${first.getFullYear()}`
   }
 
-  return `${months[first.getMonth()]} ${first.getDate()} – ${months[last.getMonth()]} ${last.getDate()}, ${first.getFullYear()}`
+  return `${first.getDate()} ${firstMonthName} – ${last.getDate()} ${lastMonthName}, ${first.getFullYear()}`
 }

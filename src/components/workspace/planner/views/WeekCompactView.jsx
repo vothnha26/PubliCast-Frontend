@@ -1,8 +1,10 @@
 import React from "react"
+import { useTranslation } from "react-i18next"
 import PostCard from "../PostCard"
 import { getWeekDays } from "@/utils/dateUtils"
 
 export default function WeekCompactView({ posts = [], currentDate = new Date() }) {
+  const { t } = useTranslation()
   const days = getWeekDays(currentDate)
 
   return (
@@ -26,7 +28,7 @@ export default function WeekCompactView({ posts = [], currentDate = new Date() }
               }`}
             >
               <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                {d.day}
+                {t(`planner.weekdays.${d.dayKey}`)}
               </span>
               <span
                 className={`text-base font-extrabold mt-0.5 inline-block ${

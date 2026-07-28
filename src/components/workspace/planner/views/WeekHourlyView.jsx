@@ -1,4 +1,5 @@
 import React from "react"
+import { useTranslation } from "react-i18next"
 import PostCard from "../PostCard"
 import { getWeekDays } from "@/utils/dateUtils"
 
@@ -11,6 +12,7 @@ function formatHour(hour) {
 }
 
 export default function WeekHourlyView({ posts = [], currentDate = new Date() }) {
+  const { t } = useTranslation()
   const days = getWeekDays(currentDate)
 
   return (
@@ -26,7 +28,7 @@ export default function WeekHourlyView({ posts = [], currentDate = new Date() })
             }`}
           >
             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-              {d.day}
+              {t(`planner.weekdays.${d.dayKey}`)}
             </span>
             <div className="flex items-center justify-center mt-0.5">
               {d.isToday ? (
