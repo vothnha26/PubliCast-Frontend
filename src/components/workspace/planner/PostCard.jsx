@@ -41,42 +41,42 @@ export default function PostCard({ post, variant = "full", onRemove }) {
   }
 
   return (
-    <div className="group relative rounded-xl border border-slate-200 dark:border-slate-800 bg-card p-2 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between cursor-pointer">
+    <div className="group relative rounded-xl border border-border/80 bg-card p-1.5 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between cursor-pointer">
       {onRemove && (
         <button
           onClick={() => onRemove(post.id)}
-          className="absolute top-1.5 right-1.5 p-1 rounded-full bg-background/80 hover:bg-rose-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all text-muted-foreground z-10"
+          className="absolute top-1 right-1 p-1 rounded-full bg-background/80 hover:bg-rose-500 hover:text-white opacity-0 group-hover:opacity-100 transition-all text-muted-foreground z-10"
         >
           <X className="h-3 w-3" />
         </button>
       )}
 
       {/* Thumbnail */}
-      <div className="relative h-20 w-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-900 mb-2">
+      <div className="relative h-14 sm:h-16 w-full rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-900 mb-1.5">
         {post.thumbnail ? (
           <img src={post.thumbnail} alt={post.title} className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-            <ImageIcon className="h-6 w-6" />
+            <ImageIcon className="h-5 w-5" />
           </div>
         )}
-        {/* Platform Badge Overlay — always visible (not hover-only), real brand icon */}
-        <div className="absolute top-1.5 right-1.5 shadow-xs rounded-md group-hover:scale-110 transition-transform bg-white/90 dark:bg-slate-900/90 p-0.5">
-          <PlatformIcon platform={platformIconName} size={16} variant="color" />
+        {/* Platform Badge Overlay */}
+        <div className="absolute top-1 right-1 shadow-2xs rounded-md group-hover:scale-110 transition-transform bg-white/90 dark:bg-slate-900/90 p-0.5">
+          <PlatformIcon platform={platformIconName} size={14} variant="color" />
         </div>
       </div>
 
       {/* Title */}
-      <h5 className="text-xs font-bold tracking-tight text-foreground line-clamp-1 mb-2">
+      <h5 className="text-[11px] font-bold tracking-tight text-foreground line-clamp-1 mb-1.5 leading-tight">
         {post.title}
       </h5>
 
-      {/* Footer: Status Badge + Time */}
-      <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/80 text-[10px]">
-        <span className={`px-1.5 py-0.5 rounded font-extrabold uppercase border ${statusConfig.badgeClass}`}>
+      {/* Footer: Compact Status Pill + Time (whitespace-nowrap prevents 2-line overflow) */}
+      <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/60 min-w-0">
+        <span className={`whitespace-nowrap px-1.5 py-0.2 text-[9px] font-extrabold uppercase rounded border shrink-0 ${statusConfig.badgeClass}`}>
           {t(statusConfig.labelKey)}
         </span>
-        <span className="font-medium text-muted-foreground">{post.timeLabel}</span>
+        <span className="text-[9.5px] font-semibold text-muted-foreground shrink-0 whitespace-nowrap">{post.timeLabel}</span>
       </div>
     </div>
   )
