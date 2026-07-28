@@ -1,19 +1,17 @@
 import React from "react"
-import { useAuthStore } from "@/store/useAuthStore"
-import { Button } from "@/components/ui/button"
+import BentoGrid from "@/components/workspace/BentoGrid"
 
 export default function PlannerPage() {
-  const { user, logout } = useAuthStore()
-
   return (
-    <div className="p-8 space-y-4">
-      <h1 className="text-2xl font-bold">Workspace Planner</h1>
-      <p className="text-muted-foreground">
-        Authenticated Session Active. User: {user?.email || JSON.stringify(user)}
-      </p>
-      <Button variant="outline" onClick={() => logout()}>
-        Logout Session
-      </Button>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">Workspace Overview & Planner</h1>
+        <p className="text-xs text-muted-foreground">
+          PubliCast social media management dashboard canvas.
+        </p>
+      </div>
+
+      <BentoGrid />
     </div>
   )
 }

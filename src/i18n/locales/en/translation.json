@@ -1,5 +1,47 @@
 {
   "welcome": "Welcome to PubliCast",
   "login": "Login",
-  "logout": "Logout"
+  "logout": "Logout",
+  "nav": {
+    "dashboard": "Dashboard",
+    "planner": "Planner",
+    "smartlinks": "SmartLinks",
+    "analytics": "Analytics & Reports",
+    "team": "Team Collaboration"
+  },
+  "header": {
+    "search": "Search campaigns, posts...",
+    "quick_create": "Create New",
+    "profile": "My Profile",
+    "settings": "Settings"
+  },
+  "plan": {
+    "pro_title": "PubliCast Pro Plan",
+    "pro_desc": "Manage up to 10 social channels",
+    "upgrade": "Upgrade Plan"
+  },
+  "settings": {
+    "title": "Settings & Configuration",
+    "desc": "Manage your workspace, account and preferences",
+    "sections": {
+      "account_workspace": "Account & Workspace",
+      "users_billing": "Users & Billing",
+      "preferences": "Preferences",
+      "support": "Support & Help"
+    },
+    "items": {
+      "profile": "User Profile",
+      "workspace_settings": "Workspace Settings",
+      "team_members": "Team Members",
+      "billing_plans": "Billing & Subscriptions",
+      "general_preferences": "General Preferences",
+      "help_center": "Help Center & Documentation"
+    }
+  },
+  "bento": {
+    "total_posts": "Total Scheduled Posts",
+    "engagement": "Average Engagement Rate",
+    "active_channels": "Connected Channels",
+    "upcoming": "Upcoming Publications"
+  }
 }

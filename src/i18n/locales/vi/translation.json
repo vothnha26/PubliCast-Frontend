@@ -1,5 +1,47 @@
 {
   "welcome": "Chào mừng đến với PubliCast",
   "login": "Đăng nhập",
-  "logout": "Đăng xuất"
+  "logout": "Đăng xuất",
+  "nav": {
+    "dashboard": "Tổng quan",
+    "planner": "Lịch xuất bản",
+    "smartlinks": "SmartLinks",
+    "analytics": "Báo cáo & Phân tích",
+    "team": "Cộng tác đội ngũ"
+  },
+  "header": {
+    "search": "Tìm kiếm chiến dịch, bài viết...",
+    "quick_create": "Tạo bài mới",
+    "profile": "Hồ sơ cá nhân",
+    "settings": "Cài đặt"
+  },
+  "plan": {
+    "pro_title": "Gói PubliCast Pro",
+    "pro_desc": "Quản lý tối đa 10 kênh mạng xã hội",
+    "upgrade": "Nâng cấp gói"
+  },
+  "settings": {
+    "title": "Cài đặt & Cấu hình",
+    "desc": "Quản lý không gian làm việc, tài khoản và tùy chỉnh",
+    "sections": {
+      "account_workspace": "Tài khoản & Workspace",
+      "users_billing": "Thành viên & Thanh toán",
+      "preferences": "Tùy chỉnh hệ thống",
+      "support": "Hỗ trợ & Trợ giúp"
+    },
+    "items": {
+      "profile": "Hồ sơ cá nhân",
+      "workspace_settings": "Cài đặt Workspace",
+      "team_members": "Danh sách thành viên",
+      "billing_plans": "Gói cước & Thanh toán",
+      "general_preferences": "Tùy chọn chung",
+      "help_center": "Trung tâm trợ giúp"
+    }
+  },
+  "bento": {
+    "total_posts": "Bài viết đã lên lịch",
+    "engagement": "Tỷ lệ tương tác trung bình",
+    "active_channels": "Kênh mạng xã hội đã kết nối",
+    "upcoming": "Bài viết chuẩn bị xuất bản"
+  }
 }
