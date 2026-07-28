@@ -66,112 +66,127 @@ export default function PlannerSubHeader() {
     <div className="space-y-3 pb-3 border-b border-border select-none">
       {/* 3-Column Grid Layout: Pinned Exact Center View Switcher (0 Layout Shift!) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-4">
-        {/* Column 1 (Left): Date Navigation & Clickable Date Title Popover */}
+        {/* Column 1 (Left): Unified Date Navigation & Clickable Date Picker Popover */}
         <div className="flex items-center gap-3 justify-start relative">
-          <div className="flex items-center rounded-lg border border-border bg-card p-0.5 shadow-2xs shrink-0">
+          {/* Navigation Pill Group */}
+          <div className="flex items-center rounded-xl border border-border bg-card p-0.5 shadow-2xs shrink-0">
             <button
               onClick={() => navigateDate("prev")}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               title="Previous"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
-              onClick={() => navigateDate("today")}
-              className="px-2.5 py-1 text-xs font-bold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-x border-border/60"
+              onClick={() => {
+                setPickerYear(currentDate.getFullYear())
+                setIsDatePickerOpen(!isDatePickerOpen)
+              }}
+              className="px-2.5 py-1 text-xs font-bold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-x border-border/60 flex items-center gap-1.5"
+              title="Click để chọn lịch cụ thể"
             >
-              {t("planner.actions.today")}
+              <CalendarIcon className="h-3.5 w-3.5 text-[hsl(var(--sidebar-primary))]" />
+              <span>{t("planner.actions.today")}</span>
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
             </button>
             <button
               onClick={() => navigateDate("next")}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               title="Next"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
 
-          {/* Interactive Date Picker Trigger */}
+          {/* Interactive Date Range Title */}
           <button
             onClick={() => {
               setPickerYear(currentDate.getFullYear())
               setIsDatePickerOpen(!isDatePickerOpen)
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-transparent hover:border-border hover:bg-card text-foreground transition-all group"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-transparent hover:border-border hover:bg-card text-foreground transition-all group"
             title="Lọc / Chọn lịch cụ thể"
           >
-            <CalendarIcon className="h-4 w-4 text-[hsl(var(--sidebar-primary))] shrink-0" />
-            <span className="text-base font-bold tracking-tight">{formattedDateRange}</span>
+            <span className="text-base font-extrabold tracking-tight">{formattedDateRange}</span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-transform duration-200" />
           </button>
 
           {/* Date Picker Popover */}
           {isDatePickerOpen && (
-            <div className="absolute left-32 top-11 w-72 p-4 rounded-2xl bg-card border border-border shadow-xl space-y-3 z-50 animate-scale-in">
-              <div className="flex items-center justify-between border-b border-border pb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                  <CalendarIcon className="h-3.5 w-3.5 text-[hsl(var(--sidebar-primary))]" />
-                  <span>Chọn thời gian lịch</span>
-                </span>
-                <button
-                  onClick={() => setIsDatePickerOpen(false)}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
+            <>
+              {/* Backdrop overlay to close when clicking outside */}
+              <div
+                className="fixed inset-0 z-40 bg-black/5"
+                onClick={() => setIsDatePickerOpen(false)}
+              />
 
-              {/* Year Selector */}
-              <div className="flex items-center justify-between px-2 py-1 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                <button
-                  onClick={() => setPickerYear((y) => y - 1)}
-                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <span className="text-sm font-extrabold text-foreground">{pickerYear}</span>
-                <button
-                  onClick={() => setPickerYear((y) => y + 1)}
-                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-800"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+              <div className="absolute left-0 top-full mt-2 w-72 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 z-50 animate-scale-in">
+                <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <CalendarIcon className="h-3.5 w-3.5 text-[hsl(var(--sidebar-primary))]" />
+                    <span>Chọn thời gian lịch</span>
+                  </span>
+                  <button
+                    onClick={() => setIsDatePickerOpen(false)}
+                    className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
 
-              {/* Month Selector Grid */}
-              <div className="grid grid-cols-3 gap-1.5">
-                {monthKeys.map((mKey, idx) => {
-                  const isCurrentSelected =
-                    currentDate.getFullYear() === pickerYear && currentDate.getMonth() === idx
-                  return (
-                    <button
-                      key={mKey}
-                      onClick={() => handleSelectMonth(idx)}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all ${
-                        isCurrentSelected
-                          ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
-                          : "bg-slate-100/50 dark:bg-slate-800/40 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      {t(`planner.months.${mKey}`)}
-                    </button>
-                  )
-                })}
-              </div>
+                {/* Year Selector */}
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+                  <button
+                    onClick={() => setPickerYear((y) => y - 1)}
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-extrabold text-foreground">{pickerYear}</span>
+                  <button
+                    onClick={() => setPickerYear((y) => y + 1)}
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
 
-              <div className="pt-2 border-t border-border flex items-center justify-between">
-                <button
-                  onClick={() => {
-                    setCurrentDate(new Date())
-                    setIsDatePickerOpen(false)
-                  }}
-                  className="text-xs font-bold text-[hsl(var(--sidebar-primary))] hover:underline"
-                >
-                  {t("planner.actions.today")}
-                </button>
-                <span className="text-[10px] text-muted-foreground">Click để chuyển lịch</span>
+                {/* Month Selector Grid */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {monthKeys.map((mKey, idx) => {
+                    const isCurrentSelected =
+                      currentDate.getFullYear() === pickerYear && currentDate.getMonth() === idx
+                    return (
+                      <button
+                        key={mKey}
+                        onClick={() => handleSelectMonth(idx)}
+                        className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                          isCurrentSelected
+                            ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                            : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {t(`planner.months.${mKey}`)}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="pt-2 border-t border-border/60 flex items-center justify-between">
+                  <button
+                    onClick={() => {
+                      setCurrentDate(new Date())
+                      setIsDatePickerOpen(false)
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-bold text-[hsl(var(--sidebar-primary))] hover:underline"
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    <span>{t("planner.actions.today")}</span>
+                  </button>
+                  <span className="text-[10px] text-muted-foreground">Click chọn thời gian</span>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
