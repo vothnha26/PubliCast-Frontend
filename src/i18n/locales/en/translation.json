@@ -37,6 +37,9 @@
       "export_report": "Export Report",
       "add_integration": "Add Integration"
     },
+    "labels": {
+      "platforms": "PLATFORMS:"
+    },
     "insights": {
       "title": "Planner Insights",
       "subtitle": "Optimize your scheduling",

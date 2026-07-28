@@ -1,7 +1,7 @@
 import React from "react"
 import { useTranslation } from "react-i18next"
 import { POST_STATUS, SOCIAL_PLATFORM } from "@/constants/planner"
-import { Video, Image as ImageIcon, FileText, AlertCircle, X } from "lucide-react"
+import { Image as ImageIcon, X } from "lucide-react"
 
 export default function PostCard({ post, variant = "full", onRemove }) {
   const { t } = useTranslation()

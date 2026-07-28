@@ -2,7 +2,7 @@ import React from "react"
 import { useTranslation } from "react-i18next"
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { Button } from "@/components/ui/button"
-import { Sparkles, Calendar as CalendarIcon, HardDrive, FileSpreadsheet, Plus, ChevronDown } from "lucide-react"
+import { Sparkles, HardDrive, FileSpreadsheet, Plus, ChevronDown } from "lucide-react"
 
 const MOCK_BEST_TIMES = [
   { hour: "12am", score: 25 },

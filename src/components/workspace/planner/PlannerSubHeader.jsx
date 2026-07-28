@@ -2,8 +2,9 @@ import React from "react"
 import { useTranslation } from "react-i18next"
 import { CALENDAR_VIEW_MODE, SOCIAL_PLATFORM } from "@/constants/planner"
 import { useContentPlanner } from "@/store/useContentPlanner"
+import { formatDateRange } from "@/utils/dateUtils"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus, Check } from "lucide-react"
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter, Plus } from "lucide-react"
 
 export default function PlannerSubHeader() {
   const { t } = useTranslation()
@@ -14,11 +15,10 @@ export default function PlannerSubHeader() {
     navigateDate,
     selectedPlatforms,
     togglePlatform,
-    selectAllPlatforms,
   } = useContentPlanner()
 
-  // Format date range
-  const formattedDateRange = "Nov 18 – Nov 24, 2026"
+  // Dynamic date range format based on currentDate & viewMode
+  const formattedDateRange = formatDateRange(currentDate, viewMode)
 
   const viewOptions = [
     { mode: CALENDAR_VIEW_MODE.MONTH, labelKey: "planner.view.month" },
@@ -94,7 +94,7 @@ export default function PlannerSubHeader() {
       {/* Platform Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pt-1">
         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1">
-          PLATFORMS:
+          {t("planner.labels.platforms")}
         </span>
         {Object.values(SOCIAL_PLATFORM).map((platform) => {
           const isSelected = selectedPlatforms.includes(platform.id)

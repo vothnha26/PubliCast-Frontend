@@ -37,6 +37,9 @@
       "export_report": "Xuất báo cáo",
       "add_integration": "Thêm kết nối"
     },
+    "labels": {
+      "platforms": "NỀN TẢNG:"
+    },
     "insights": {
       "title": "Planner Insights",
       "subtitle": "Tối ưu hóa lịch đăng bài",

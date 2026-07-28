@@ -1,20 +1,13 @@
 import React from "react"
 import PostCard from "../PostCard"
+import { getWeekDays } from "@/utils/dateUtils"
 
-const DAYS = [
-  { day: "MON", date: "18", fullDate: "2026-11-18" },
-  { day: "TUE", date: "19", fullDate: "2026-11-19" },
-  { day: "WED", date: "20", fullDate: "2026-11-20", isToday: true },
-  { day: "THU", date: "21", fullDate: "2026-11-21" },
-  { day: "FRI", date: "22", fullDate: "2026-11-22" },
-  { day: "SAT", date: "23", fullDate: "2026-11-23" },
-  { day: "SUN", date: "24", fullDate: "2026-11-24" },
-]
+export default function WeekCompactView({ posts = [], currentDate = new Date() }) {
+  const days = getWeekDays(currentDate)
 
-export default function WeekCompactView({ posts = [] }) {
   return (
     <div className="flex-1 border border-border rounded-2xl bg-card overflow-hidden grid grid-cols-7 divide-x divide-border shadow-2xs select-none">
-      {DAYS.map((d) => {
+      {days.map((d) => {
         const dayPosts = posts.filter((p) => p.date === d.fullDate)
 
         return (

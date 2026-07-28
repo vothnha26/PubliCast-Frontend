@@ -1,15 +1,6 @@
 import React from "react"
 import PostCard from "../PostCard"
-
-const DAYS = [
-  { day: "MON", date: "18", fullDate: "2026-11-18" },
-  { day: "TUE", date: "19", fullDate: "2026-11-19" },
-  { day: "WED", date: "20", fullDate: "2026-11-20", isToday: true },
-  { day: "THU", date: "21", fullDate: "2026-11-21" },
-  { day: "FRI", date: "22", fullDate: "2026-11-22" },
-  { day: "SAT", date: "23", fullDate: "2026-11-23" },
-  { day: "SUN", date: "24", fullDate: "2026-11-24" },
-]
+import { getWeekDays } from "@/utils/dateUtils"
 
 const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
 
@@ -19,13 +10,15 @@ function formatHour(hour) {
   return `${hour} AM`
 }
 
-export default function WeekHourlyView({ posts = [] }) {
+export default function WeekHourlyView({ posts = [], currentDate = new Date() }) {
+  const days = getWeekDays(currentDate)
+
   return (
     <div className="flex-1 border border-border rounded-2xl bg-card overflow-x-auto shadow-2xs select-none">
       {/* 7 Days Header Row */}
       <div className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-border bg-slate-50/50 dark:bg-slate-900/50">
         <div className="h-14 border-r border-border" />
-        {DAYS.map((d) => (
+        {days.map((d) => (
           <div
             key={d.date}
             className={`h-14 flex flex-col items-center justify-center border-r last:border-r-0 border-border px-2 transition-colors ${
@@ -58,7 +51,7 @@ export default function WeekHourlyView({ posts = [] }) {
             </div>
 
             {/* 7 Day Slot Cells */}
-            {DAYS.map((d) => {
+            {days.map((d) => {
               const matchingPosts = posts.filter(
                 (p) => p.date === d.fullDate && p.hour === hour
               )
