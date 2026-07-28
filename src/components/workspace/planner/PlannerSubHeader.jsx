@@ -26,6 +26,7 @@ import {
   ImageIcon,
   Sparkles,
   Lightbulb,
+  BarChart2,
 } from "lucide-react"
 
 import ImportSyncModal from "./ImportSyncModal"
@@ -51,6 +52,8 @@ export default function PlannerSubHeader() {
     resetAllFilters,
     searchQuery,
     setSearchQuery,
+    isInsightsOpen,
+    toggleInsights,
   } = useContentPlanner()
 
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -469,6 +472,21 @@ export default function PlannerSubHeader() {
               </>
             )}
           </div>
+
+          {/* Insights Panel Toggle Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleInsights}
+            className={`h-9 px-2.5 border-border shadow-2xs rounded-xl transition-all ${
+              isInsightsOpen
+                ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-bold"
+                : "bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground"
+            }`}
+            title={isInsightsOpen ? "Ẩn Planner Insights" : "Hiện Planner Insights"}
+          >
+            <BarChart2 className="h-4 w-4" />
+          </Button>
 
           {/* Settings Menu Button */}
           <div className="relative">

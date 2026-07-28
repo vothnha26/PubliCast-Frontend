@@ -13,20 +13,30 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
-import { Search, Bell, ChevronDown, Settings, LogOut, LayoutGrid } from "lucide-react"
+import { Search, Bell, ChevronDown, Settings, LogOut, LayoutGrid, PanelLeft } from "lucide-react"
 
 export default function Header() {
   const { t } = useTranslation()
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const openSettings = useDashboardStore((state) => state.openSettings)
+  const toggleSidebar = useDashboardStore((state) => state.toggleSidebar)
+  const isSidebarCollapsed = useDashboardStore((state) => state.isSidebarCollapsed)
 
   const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : "U"
 
   return (
     <header className="h-14 border-b bg-background px-6 flex items-center justify-between gap-4 shrink-0 select-none">
-      {/* Left: Logo + Search input */}
+      {/* Left: Sidebar Toggle + Logo + Search input */}
       <div className="flex items-center gap-4">
+        <button
+          onClick={toggleSidebar}
+          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95"
+          title={isSidebarCollapsed ? "Mở rộng Thanh menu trái" : "Thu gọn Thanh menu trái"}
+        >
+          <PanelLeft className="h-4 w-4" />
+        </button>
+
         <div className="flex items-center gap-1">
           <div className="h-8 w-8 rounded-lg bg-[hsl(var(--sidebar-primary))] flex items-center justify-center text-white shrink-0">
             <LayoutGrid className="h-4 w-4" />

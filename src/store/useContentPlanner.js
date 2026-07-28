@@ -14,6 +14,10 @@ export const useContentPlanner = create((set, get) => ({
   posts: [],
   insights: null,
   isLoading: false,
+  isInsightsOpen: true,
+
+  toggleInsights: () => set((state) => ({ isInsightsOpen: !state.isInsightsOpen })),
+  setIsInsightsOpen: (isInsightsOpen) => set({ isInsightsOpen }),
 
   setViewMode: (viewMode) => set({ viewMode }),
 
