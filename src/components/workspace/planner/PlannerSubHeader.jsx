@@ -22,6 +22,9 @@ import {
   RefreshCw,
   Grid,
   Bell,
+  MoreHorizontal,
+  Download,
+  Sparkles,
 } from "lucide-react"
 
 import ImportSyncModal from "./ImportSyncModal"
@@ -52,6 +55,7 @@ export default function PlannerSubHeader() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isPlatformDropdownOpen, setIsPlatformDropdownOpen] = useState(false)
   const [isCalendarSettingsOpen, setIsCalendarSettingsOpen] = useState(false)
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [pickerYear, setPickerYear] = useState(currentDate.getFullYear())
 
@@ -560,17 +564,80 @@ export default function PlannerSubHeader() {
             )}
           </div>
 
-          {/* Standalone Export Button (Matching Image 4) */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsImportModalOpen(true)}
-            className="h-9 px-3 text-xs font-semibold gap-1.5 border-border shadow-2xs bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground"
-            title="Import / Export Data"
-          >
-            <RefreshCw className="h-3.5 w-3.5 text-indigo-500" />
-            <span className="hidden sm:inline">Import / Export</span>
-          </Button>
+          {/* Sleek (...) More Actions Menu Dropdown */}
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsMoreMenuOpen(!isMoreMenuOpen)
+                setIsCalendarSettingsOpen(false)
+                setIsPlatformDropdownOpen(false)
+                setIsDatePickerOpen(false)
+                setIsFilterOpen(false)
+              }}
+              className="h-9 w-9 p-0 border-border shadow-2xs bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground rounded-lg"
+              title="Tính năng phụ & Tùy chọn mở rộng"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+
+            {isMoreMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/5"
+                  onClick={() => setIsMoreMenuOpen(false)}
+                />
+
+                <div className="absolute right-0 top-full mt-2 w-56 py-2 px-1.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-0.5 z-50 animate-scale-in text-xs">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/60 mb-1">
+                    Tính năng phụ trợ
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false)
+                      setIsImportModalOpen(true)
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <RefreshCw className="h-4 w-4 text-indigo-500 shrink-0" />
+                      <span>Quản lý & Xuất nhập Dữ liệu</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false)
+                      setIsImportModalOpen(true)
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group text-left"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Download className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span>Xuất báo cáo Lịch bài đăng</span>
+                    </div>
+                  </button>
+
+                  <div className="my-1 border-t border-border/60" />
+
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false)
+                      alert("Đã bắt đầu đồng bộ toàn bộ tài khoản mạng xã hội liên kết!")
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2.5 text-muted-foreground">
+                      <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+                      <span className="text-foreground">Đồng bộ tất cả kênh</span>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Primary CTA */}
           <Button className="h-9 px-3.5 text-xs font-bold rounded-lg bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary)/0.9)] text-white gap-1.5 shadow-xs shrink-0">
