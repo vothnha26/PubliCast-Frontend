@@ -1,4 +1,4 @@
-import { POST_STATUS, SOCIAL_PLATFORM } from "@/constants/planner"
+import { POST_STATUS, POST_TYPE, SOCIAL_PLATFORM } from "@/constants/planner"
 
 export const MOCK_POSTS = [
   {
@@ -6,6 +6,7 @@ export const MOCK_POSTS = [
     title: "New Product Showcase Video",
     platform: SOCIAL_PLATFORM.INSTAGRAM.id,
     status: POST_STATUS.PUBLISHED.id,
+    type: POST_TYPE.VIDEO.id,
     date: "2026-11-18",
     dayIndex: 1, // Mon
     hour: 9,
@@ -17,6 +18,7 @@ export const MOCK_POSTS = [
     title: "Weekly Team Update & Sync",
     platform: SOCIAL_PLATFORM.FACEBOOK.id,
     status: POST_STATUS.SCHEDULED.id,
+    type: POST_TYPE.IMAGE.id,
     date: "2026-11-19",
     dayIndex: 2, // Tue
     hour: 14,
@@ -27,7 +29,8 @@ export const MOCK_POSTS = [
     id: "post-3",
     title: "Feature Demo & Walkthrough",
     platform: SOCIAL_PLATFORM.YOUTUBE.id,
-    status: POST_STATUS.DRAFTING.id,
+    status: POST_STATUS.DRAFT.id,
+    type: POST_TYPE.VIDEO.id,
     date: "2026-11-20",
     dayIndex: 3, // Wed
     hour: 11,
@@ -39,6 +42,7 @@ export const MOCK_POSTS = [
     title: "B2B Strategy Guide 2026",
     platform: SOCIAL_PLATFORM.X.id,
     status: POST_STATUS.FAILED.id,
+    type: POST_TYPE.CAROUSEL.id,
     date: "2026-11-22",
     dayIndex: 5, // Fri
     hour: 17,
@@ -50,6 +54,7 @@ export const MOCK_POSTS = [
     title: "Q4 Marketing Masterclass",
     platform: SOCIAL_PLATFORM.TIKTOK.id,
     status: POST_STATUS.SCHEDULED.id,
+    type: POST_TYPE.VIDEO.id,
     date: "2026-11-23",
     dayIndex: 6, // Sat
     hour: 10,

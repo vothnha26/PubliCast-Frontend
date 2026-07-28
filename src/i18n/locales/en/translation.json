@@ -19,10 +19,18 @@
   },
   "planner": {
     "status": {
-      "published": "PUBLISHED",
+      "all": "All statuses",
+      "draft": "DRAFT",
       "scheduled": "SCHEDULED",
-      "drafting": "DRAFTING",
+      "pending_approval": "PENDING APPROVAL",
+      "published": "PUBLISHED",
       "failed": "FAILED"
+    },
+    "type": {
+      "all": "All types",
+      "image": "Image",
+      "video": "Video",
+      "carousel": "Carousel"
     },
     "view": {
       "month": "Month",
@@ -48,7 +56,9 @@
       "peak_engagement": "Peak engagement expected at 11:30 AM Wednesday.",
       "quick_preview": "Quick Preview",
       "scheduled_for": "Scheduled for",
-      "platform_label": "Platform"
+      "platform_label": "Platform",
+      "status_label": "Status",
+      "type_label": "Post type"
     },
     "weekdays": {
       "MON": "MON",

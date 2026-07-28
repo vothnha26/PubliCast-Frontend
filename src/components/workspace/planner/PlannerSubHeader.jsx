@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { CALENDAR_VIEW_MODE, SOCIAL_PLATFORM } from "@/constants/planner"
+import { CALENDAR_VIEW_MODE, SOCIAL_PLATFORM, POST_STATUS, POST_TYPE, FILTER_ALL } from "@/constants/planner"
 import { useContentPlanner } from "@/store/useContentPlanner"
 import { formatDateRange } from "@/utils/dateUtils"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import {
   X,
   SlidersHorizontal,
   ChevronDown,
+  Check,
 } from "lucide-react"
 
 export default function PlannerSubHeader() {
@@ -27,6 +28,10 @@ export default function PlannerSubHeader() {
     selectedPlatforms,
     togglePlatform,
     selectAllPlatforms,
+    filterStatus,
+    setFilterStatus,
+    filterType,
+    setFilterType,
     searchQuery,
     setSearchQuery,
   } = useContentPlanner()
@@ -46,7 +51,10 @@ export default function PlannerSubHeader() {
   ]
 
   const totalPlatforms = Object.keys(SOCIAL_PLATFORM).length
-  const activeFiltersCount = totalPlatforms - selectedPlatforms.length
+  const activeFiltersCount =
+    (totalPlatforms - selectedPlatforms.length) +
+    (filterStatus !== FILTER_ALL ? 1 : 0) +
+    (filterType !== FILTER_ALL ? 1 : 0)
 
   const monthKeys = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -240,62 +248,115 @@ export default function PlannerSubHeader() {
 
             {/* Filter Dropdown Popover */}
             {isFilterOpen && (
-              <div className="absolute right-0 top-11 w-64 p-3 rounded-2xl bg-card border border-border shadow-xl space-y-3 z-50 animate-scale-in">
-                <div className="flex items-center justify-between border-b border-border pb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    {t("planner.actions.filters")}
-                  </span>
-                  <button
-                    onClick={() => setIsFilterOpen(false)}
-                    className="p-1 rounded-md text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+              <>
+                {/* Backdrop overlay */}
+                <div
+                  className="fixed inset-0 z-40 bg-black/5"
+                  onClick={() => setIsFilterOpen(false)}
+                />
 
-                {/* Platform Checkboxes */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-semibold text-muted-foreground block">
-                    {t("planner.labels.platform_label")}
-                  </span>
-                  {Object.values(SOCIAL_PLATFORM).map((platform) => {
-                    const isChecked = selectedPlatforms.includes(platform.id)
-                    return (
-                      <label
-                        key={platform.id}
-                        className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer text-xs"
+                <div className="absolute right-0 top-full mt-2 w-72 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3.5 z-50 animate-scale-in select-none">
+                  <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      {t("planner.actions.filters")}
+                    </span>
+                    <button
+                      onClick={() => setIsFilterOpen(false)}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Status filter (Compact 2-Column Grid) */}
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      {t("planner.labels.status_label")}
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => setFilterStatus(FILTER_ALL)}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                          filterStatus === FILTER_ALL
+                            ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                            : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                        }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <PlatformIcon platform={platform.iconName} size={14} />
-                          <span className="font-medium text-foreground">{platform.name}</span>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => togglePlatform(platform.id)}
-                          className="h-3.5 w-3.5 rounded border-border accent-[hsl(var(--sidebar-primary))]"
-                        />
-                      </label>
-                    )
-                  })}
-                </div>
+                        <span>{t("planner.status.all")}</span>
+                        {filterStatus === FILTER_ALL && <Check className="h-3 w-3 shrink-0" />}
+                      </button>
+                      {Object.values(POST_STATUS).map((status) => (
+                        <button
+                          key={status.id}
+                          onClick={() => setFilterStatus(status.id)}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                            filterStatus === status.id
+                              ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                              : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          <span className="truncate">{t(status.labelKey)}</span>
+                          {filterStatus === status.id && <Check className="h-3 w-3 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                <div className="pt-2 border-t border-border flex items-center justify-between">
-                  <button
-                    onClick={selectAllPlatforms}
-                    className="text-[11px] font-bold text-indigo-500 hover:underline"
-                  >
-                    {t("planner.actions.clear_all")}
-                  </button>
-                  <Button
-                    size="sm"
-                    onClick={() => setIsFilterOpen(false)}
-                    className="h-7 px-3 text-[11px] font-bold bg-[hsl(var(--sidebar-primary))] text-white rounded-md"
-                  >
-                    Done
-                  </Button>
+                  {/* Type filter (Compact 2-Column Grid) */}
+                  <div className="space-y-1.5 pt-2.5 border-t border-border/60">
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      {t("planner.labels.type_label")}
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        onClick={() => setFilterType(FILTER_ALL)}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                          filterType === FILTER_ALL
+                            ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                            : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        <span>{t("planner.type.all")}</span>
+                        {filterType === FILTER_ALL && <Check className="h-3 w-3 shrink-0" />}
+                      </button>
+                      {Object.values(POST_TYPE).map((type) => (
+                        <button
+                          key={type.id}
+                          onClick={() => setFilterType(type.id)}
+                          className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                            filterType === type.id
+                              ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
+                              : "bg-slate-100/70 dark:bg-slate-800/50 text-foreground hover:bg-slate-200 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          <span className="truncate">{t(type.labelKey)}</span>
+                          {filterType === type.id && <Check className="h-3 w-3 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-border/60 flex items-center justify-between">
+                    <button
+                      onClick={() => {
+                        setFilterStatus(FILTER_ALL)
+                        setFilterType(FILTER_ALL)
+                        selectAllPlatforms()
+                      }}
+                      className="text-xs font-bold text-rose-500 hover:underline"
+                    >
+                      {t("planner.actions.clear_all")}
+                    </button>
+                    <Button
+                      size="sm"
+                      onClick={() => setIsFilterOpen(false)}
+                      className="h-7 px-3.5 text-xs font-bold bg-[hsl(var(--sidebar-primary))] text-white rounded-lg shadow-xs"
+                    >
+                      Done
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 

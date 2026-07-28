@@ -19,10 +19,18 @@
   },
   "planner": {
     "status": {
-      "published": "ĐÃ ĐĂNG",
+      "all": "Tất cả trạng thái",
+      "draft": "BẢN NHÁP",
       "scheduled": "ĐÃ LÊN LỊCH",
-      "drafting": "BẢN NHÁP",
+      "pending_approval": "CHỜ DUYỆT",
+      "published": "ĐÃ ĐĂNG",
       "failed": "THẤT BẠI"
+    },
+    "type": {
+      "all": "Tất cả loại bài",
+      "image": "Hình ảnh",
+      "video": "Video",
+      "carousel": "Carousel"
     },
     "view": {
       "month": "Tháng",
@@ -48,7 +56,9 @@
       "peak_engagement": "Dự kiến tương tác cao nhất vào 11:30 sáng Thứ Tư.",
       "quick_preview": "Xem nhanh",
       "scheduled_for": "Lên lịch vào",
-      "platform_label": "Nền tảng"
+      "platform_label": "Nền tảng",
+      "status_label": "Trạng thái",
+      "type_label": "Loại bài viết"
     },
     "weekdays": {
       "MON": "T2",

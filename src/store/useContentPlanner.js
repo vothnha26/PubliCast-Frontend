@@ -1,11 +1,16 @@
 import { create } from "zustand"
-import { CALENDAR_VIEW_MODE, SOCIAL_PLATFORM } from "@/constants/planner"
+import { CALENDAR_VIEW_MODE, SOCIAL_PLATFORM, FILTER_ALL } from "@/constants/planner"
 import { plannerService } from "@/services/plannerService"
 
 export const useContentPlanner = create((set, get) => ({
   viewMode: CALENDAR_VIEW_MODE.WEEK_HOURLY,
   currentDate: new Date(2026, 10, 20), // Nov 20, 2026
   selectedPlatforms: Object.keys(SOCIAL_PLATFORM),
+  // "ALL" = không lọc theo field đó — khớp đúng hành vi filterStatus/filterType
+  // ở frontend cũ (PlannerToolbar.jsx/WeeklyCalendarView.jsx), chọn 1 giá trị
+  // duy nhất mỗi lần (radio-style), không phải multi-select như selectedPlatforms.
+  filterStatus: FILTER_ALL,
+  filterType: FILTER_ALL,
   searchQuery: "",
   posts: [],
   insights: null,
@@ -16,6 +21,10 @@ export const useContentPlanner = create((set, get) => ({
   setCurrentDate: (currentDate) => set({ currentDate }),
 
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+
+  setFilterStatus: (filterStatus) => set({ filterStatus }),
+
+  setFilterType: (filterType) => set({ filterType }),
 
   togglePlatform: (platformId) => {
     set((state) => {
@@ -63,11 +72,19 @@ export const useContentPlanner = create((set, get) => ({
   },
 
   getFilteredPosts: () => {
-    const { posts, selectedPlatforms, searchQuery } = get()
+    const { posts, selectedPlatforms, filterStatus, filterType, searchQuery } = get()
     let result = posts
 
     if (selectedPlatforms && selectedPlatforms.length > 0) {
       result = result.filter((post) => selectedPlatforms.includes(post.platform))
+    }
+
+    if (filterStatus && filterStatus !== FILTER_ALL) {
+      result = result.filter((post) => post.status === filterStatus)
+    }
+
+    if (filterType && filterType !== FILTER_ALL) {
+      result = result.filter((post) => post.type === filterType)
     }
 
     if (searchQuery && searchQuery.trim() !== "") {
