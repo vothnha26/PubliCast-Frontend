@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useContentPlanner } from "@/store/useContentPlanner"
+import GoogleDrivePickerModal from "./GoogleDrivePickerModal"
 
 export const MODAL_TAB = {
   IMPORT: "IMPORT",
@@ -47,6 +48,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
   const [exportRange, setExportRange] = useState("month")
   const [successMessage, setSuccessMessage] = useState(null)
   const [showFormatHelp, setShowFormatHelp] = useState(false)
+  const [isDrivePickerOpen, setIsDrivePickerOpen] = useState(false)
 
   const fileInputRef = useRef(null)
 
@@ -243,10 +245,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                   </span>
 
                   <button
-                    onClick={() => {
-                      setSuccessMessage("Đã kết nối với Google Drive! Đang đồng bộ hình ảnh & video...")
-                      setTimeout(() => setSuccessMessage(null), 2500)
-                    }}
+                    onClick={() => setIsDrivePickerOpen(true)}
                     className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/20 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 transition-all group text-left"
                   >
                     <div className="flex items-start gap-3.5">
@@ -603,6 +602,16 @@ export default function ImportSyncModal({ isOpen, onClose }) {
           </div>
         )}
       </div>
+
+      {/* Google Drive Picker Modal (Images 1, 2, 3) */}
+      <GoogleDrivePickerModal
+        isOpen={isDrivePickerOpen}
+        onClose={() => setIsDrivePickerOpen(false)}
+        onSelectFile={(file) => {
+          setSuccessMessage(`Đã nhập media "${file.name}" từ Google Drive!`)
+          setTimeout(() => setSuccessMessage(null), 2500)
+        }}
+      />
     </div>
   )
 }
