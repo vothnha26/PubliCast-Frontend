@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import { useTranslation } from "react-i18next"
 import PostCard from "../PostCard"
 import { getWeekDays } from "@/utils/dateUtils"
@@ -11,9 +11,37 @@ function formatHour(hour) {
   return `${hour} AM`
 }
 
-export default function WeekHourlyView({ posts = [], currentDate = new Date() }) {
+export default function WeekHourlyView({ posts = [], currentDate = new Date(), onDriveFileDrop }) {
   const { t } = useTranslation()
   const days = getWeekDays(currentDate)
+  // Ô đang được kéo file Drive lê qua (highlight drop target) — key dạng "date-hour"
+  const [dragOverCell, setDragOverCell] = useState(null)
+
+  const handleCellDragOver = (e, cellKey) => {
+    // Chỉ chấp nhận drop nếu đây đúng là file được kéo từ GoogleDrivePickerModal
+    // (dataTransfer.types chứa "application/json", set ở GoogleDrivePickerModal.jsx:98)
+    if (!e.dataTransfer.types.includes("application/json")) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "copy"
+    setDragOverCell(cellKey)
+  }
+
+  const handleCellDragLeave = (cellKey) => {
+    setDragOverCell((current) => (current === cellKey ? null : current))
+  }
+
+  const handleCellDrop = (e, dateStr, hour) => {
+    e.preventDefault()
+    setDragOverCell(null)
+    const raw = e.dataTransfer.getData("application/json")
+    if (!raw || !onDriveFileDrop) return
+    try {
+      const file = JSON.parse(raw)
+      onDriveFileDrop(file, dateStr, hour)
+    } catch (err) {
+      console.error("Failed to parse dropped Drive file payload", err)
+    }
+  }
 
   return (
     <div className="flex-1 border border-border rounded-2xl bg-card overflow-x-auto shadow-2xs">
@@ -57,12 +85,21 @@ export default function WeekHourlyView({ posts = [], currentDate = new Date() })
               const matchingPosts = posts.filter(
                 (p) => p.date === d.fullDate && p.hour === hour
               )
+              const cellKey = `${d.date}-${hour}`
+              const isDragOver = dragOverCell === cellKey
 
               return (
                 <div
-                  key={`${d.date}-${hour}`}
+                  key={cellKey}
+                  onDragOver={(e) => handleCellDragOver(e, cellKey)}
+                  onDragLeave={() => handleCellDragLeave(cellKey)}
+                  onDrop={(e) => handleCellDrop(e, d.fullDate, hour)}
                   className={`p-1.5 border-r last:border-r-0 border-border relative transition-colors hover:bg-slate-100/40 dark:hover:bg-slate-800/40 ${
                     d.isToday ? "bg-[hsl(var(--sidebar-primary)/0.03)]" : ""
+                  } ${
+                    isDragOver
+                      ? "outline outline-2 outline-dashed outline-[hsl(var(--sidebar-primary))] bg-[hsl(var(--sidebar-primary)/0.08)]"
+                      : ""
                   }`}
                 >
                   {/* Current Time Indicator Line for Wed 20 at 10:30 AM */}

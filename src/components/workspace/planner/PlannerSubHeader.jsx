@@ -23,6 +23,9 @@ import {
   Grid,
   Bell,
   HardDrive,
+  ImageIcon,
+  Sparkles,
+  Lightbulb,
 } from "lucide-react"
 
 import ImportSyncModal from "./ImportSyncModal"
@@ -56,6 +59,8 @@ export default function PlannerSubHeader() {
   const [isCalendarSettingsOpen, setIsCalendarSettingsOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isDrivePickerOpen, setIsDrivePickerOpen] = useState(false)
+  const [isIntegrationsOpen, setIsIntegrationsOpen] = useState(false)
+  const [activeIntegrationTab, setActiveIntegrationTab] = useState("drive")
   const [pickerYear, setPickerYear] = useState(currentDate.getFullYear())
 
   // Dynamic date range format using i18n
@@ -93,10 +98,10 @@ export default function PlannerSubHeader() {
 
   return (
     <div className="pb-3 border-b border-border">
-      {/* 3-Column Grid Layout: Pinned Exact Center View Switcher */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-4">
-        {/* Column 1 (Left): Date Navigation + Date Picker Popover + Platform Dropdown Popover */}
-        <div className="flex items-center gap-2.5 justify-start relative flex-wrap">
+      {/* Single Line Clean Toolbar Layout */}
+      <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-2.5">
+        {/* Group 1 (Left): Date Navigation + Date Title + Platform Filter */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* Navigation Pill Group */}
           <div className="flex items-center rounded-xl border border-border bg-card p-0.5 shadow-2xs shrink-0">
             <button
@@ -108,7 +113,7 @@ export default function PlannerSubHeader() {
             </button>
             <button
               onClick={() => navigateDate("today")}
-              className="px-3 py-1 text-xs font-bold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-x border-border/60"
+              className="px-2.5 py-1 text-xs font-bold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-x border-border/60"
               title="Nhảy về Hôm nay"
             >
               {t("planner.actions.today")}
@@ -122,7 +127,7 @@ export default function PlannerSubHeader() {
             </button>
           </div>
 
-          {/* Interactive Date Range Title - Date Picker Popover */}
+          {/* Date Range Popover Trigger */}
           <div className="relative">
             <button
               onClick={() => {
@@ -131,12 +136,12 @@ export default function PlannerSubHeader() {
                 setIsPlatformDropdownOpen(false)
                 setIsFilterOpen(false)
                 setIsCalendarSettingsOpen(false)
+                setIsIntegrationsOpen(false)
               }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/60 bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all shadow-2xs group"
-              title="Bấm để chọn ngày tháng"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/60 bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all shadow-2xs group"
             >
               <CalendarIcon className="h-4 w-4 text-[hsl(var(--sidebar-primary))] shrink-0" />
-              <span className="text-sm sm:text-base font-extrabold tracking-tight">{formattedDateRange}</span>
+              <span className="text-xs sm:text-sm font-extrabold tracking-tight whitespace-nowrap">{formattedDateRange}</span>
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-transform duration-200" />
             </button>
 
@@ -218,7 +223,7 @@ export default function PlannerSubHeader() {
             )}
           </div>
 
-          {/* Platform Selector Dropdown Popover (Image 1 style) */}
+          {/* Platform Selector Dropdown */}
           <div className="relative">
             <button
               onClick={() => {
@@ -226,30 +231,30 @@ export default function PlannerSubHeader() {
                 setIsDatePickerOpen(false)
                 setIsFilterOpen(false)
                 setIsCalendarSettingsOpen(false)
+                setIsIntegrationsOpen(false)
               }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all shadow-2xs font-semibold text-xs shrink-0"
-              title="Bấm để lọc nền tảng"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all shadow-2xs font-semibold text-xs shrink-0"
             >
               {selectedPlatforms.length === totalPlatforms ? (
                 <span className="flex items-center gap-1.5">
                   <Globe className="h-4 w-4 text-[hsl(var(--sidebar-primary))]" />
-                  <span className="font-bold">Tất cả nền tảng</span>
+                  <span className="font-bold whitespace-nowrap">Tất cả nền tảng</span>
                 </span>
               ) : selectedPlatforms.length === 1 ? (
                 <span className="flex items-center gap-1.5">
                   <PlatformIcon platform={SOCIAL_PLATFORM[selectedPlatforms[0]]?.iconName} size={16} />
-                  <span className="font-bold">{SOCIAL_PLATFORM[selectedPlatforms[0]]?.name}</span>
+                  <span className="font-bold whitespace-nowrap">{SOCIAL_PLATFORM[selectedPlatforms[0]]?.name}</span>
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5">
                   <Globe className="h-4 w-4 text-[hsl(var(--sidebar-primary))]" />
-                  <span className="font-bold">Nền tảng ({selectedPlatforms.length}/{totalPlatforms})</span>
+                  <span className="font-bold whitespace-nowrap">Nền tảng ({selectedPlatforms.length}/{totalPlatforms})</span>
                 </span>
               )}
               <ChevronDown className="h-3.5 w-3.5 text-muted-foreground ml-0.5" />
             </button>
 
-            {/* Platform Selection Popover (Matching Image 1) */}
+            {/* Platform Selection Popover */}
             {isPlatformDropdownOpen && (
               <>
                 <div
@@ -298,14 +303,14 @@ export default function PlannerSubHeader() {
           </div>
         </div>
 
-        {/* Column 2 (Center): Segmented View Mode Switcher (Pinned Exact Center) */}
-        <div className="flex items-center justify-center">
+        {/* Group 2 (Center): Segmented View Mode Switcher */}
+        <div className="flex items-center justify-center shrink-0">
           <div className="flex items-center rounded-xl border border-border bg-card p-1 shadow-2xs">
             {viewOptions.map((opt) => (
               <button
                 key={opt.mode}
                 onClick={() => setViewMode(opt.mode)}
-                className={`px-3.5 py-1 rounded-lg text-xs font-bold transition-all duration-150 ${
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all duration-150 whitespace-nowrap ${
                   viewMode === opt.mode
                     ? "bg-[hsl(var(--sidebar-primary))] text-white shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800/50"
@@ -317,8 +322,8 @@ export default function PlannerSubHeader() {
           </div>
         </div>
 
-        {/* Column 3 (Right): Search + Filter Popover + Calendar Settings + Primary CTA */}
-        <div className="flex items-center gap-2 justify-end relative">
+        {/* Group 3 (Right): Search + Filter + Settings + Integrations Black Icon Button + Create Post */}
+        <div className="flex items-center gap-2 justify-end relative shrink-0">
           {/* Search Box */}
           <div className="relative flex items-center">
             <Search className="h-3.5 w-3.5 absolute left-3 text-muted-foreground pointer-events-none" />
@@ -327,7 +332,7 @@ export default function PlannerSubHeader() {
               value={searchQuery || ""}
               onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
               placeholder={t("planner.search_placeholder")}
-              className="h-9 w-32 sm:w-40 pl-8 pr-3 text-xs bg-card border border-border rounded-lg placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[hsl(var(--sidebar-primary))] transition-all"
+              className="h-9 w-28 sm:w-36 pl-8 pr-3 text-xs bg-card border border-border rounded-xl placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[hsl(var(--sidebar-primary))] transition-all"
             />
           </div>
 
@@ -341,13 +346,14 @@ export default function PlannerSubHeader() {
                 setIsPlatformDropdownOpen(false)
                 setIsDatePickerOpen(false)
                 setIsCalendarSettingsOpen(false)
+                setIsIntegrationsOpen(false)
               }}
-              className={`h-9 px-3 text-xs font-semibold gap-1.5 border-border shadow-2xs bg-card ${
+              className={`h-9 px-3 text-xs font-semibold gap-1.5 border-border shadow-2xs bg-card rounded-xl ${
                 activeFiltersCount > 0 ? "border-[hsl(var(--sidebar-primary))] text-[hsl(var(--sidebar-primary))]" : ""
               }`}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span>{t("planner.actions.filters")}</span>
+              <span className="hidden sm:inline">{t("planner.actions.filters")}</span>
               {activeFiltersCount > 0 && (
                 <span className="h-4 w-4 rounded-full bg-[hsl(var(--sidebar-primary))] text-white text-[10px] font-bold flex items-center justify-center -mr-1">
                   {activeFiltersCount}
@@ -376,7 +382,7 @@ export default function PlannerSubHeader() {
                     </button>
                   </div>
 
-                  {/* Status filter (Multi-Select Compact 2-Column Grid) */}
+                  {/* Status filter */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
@@ -410,7 +416,7 @@ export default function PlannerSubHeader() {
                     </div>
                   </div>
 
-                  {/* Type filter (Multi-Select Compact 2-Column Grid) */}
+                  {/* Type filter */}
                   <div className="space-y-1.5 pt-2.5 border-t border-border/60">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
@@ -464,7 +470,7 @@ export default function PlannerSubHeader() {
             )}
           </div>
 
-          {/* Calendar Settings Menu (Matching Image 2) */}
+          {/* Settings Menu Button */}
           <div className="relative">
             <Button
               variant="outline"
@@ -474,8 +480,9 @@ export default function PlannerSubHeader() {
                 setIsPlatformDropdownOpen(false)
                 setIsDatePickerOpen(false)
                 setIsFilterOpen(false)
+                setIsIntegrationsOpen(false)
               }}
-              className="h-9 px-2.5 border-border shadow-2xs bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground"
+              className="h-9 px-2.5 border-border shadow-2xs bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground hover:text-foreground rounded-xl"
               title="Cài đặt lịch"
             >
               <Settings className="h-4 w-4" />
@@ -524,7 +531,6 @@ export default function PlannerSubHeader() {
 
                   <div className="my-1 border-t border-border/60" />
 
-                  {/* Mục Quản lý & Xuất nhập Dữ liệu (Mở Modal Import/Export) */}
                   <button
                     onClick={() => {
                       setIsCalendarSettingsOpen(false)
@@ -535,20 +541,6 @@ export default function PlannerSubHeader() {
                     <div className="flex items-center gap-2.5 text-muted-foreground group-hover:text-foreground">
                       <RefreshCw className="h-4 w-4 text-indigo-500 shrink-0" />
                       <span className="text-foreground font-bold">Quản lý & Xuất nhập Dữ liệu</span>
-                    </div>
-                  </button>
-
-                  {/* Mục Duyệt tệp Google Drive (Mở trực tiếp Google Drive Browser) */}
-                  <button
-                    onClick={() => {
-                      setIsCalendarSettingsOpen(false)
-                      setIsDrivePickerOpen(true)
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
-                  >
-                    <div className="flex items-center gap-2.5 text-muted-foreground group-hover:text-foreground">
-                      <HardDrive className="h-4 w-4 text-blue-500 shrink-0" />
-                      <span className="text-foreground">Duyệt tệp Google Drive</span>
                     </div>
                   </button>
 
@@ -578,10 +570,214 @@ export default function PlannerSubHeader() {
             )}
           </div>
 
+          {/* SLEEK BLACK ICON BUTTON 🖼️ (Integrations Popover - Drive / Canva / Ideas) */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setIsIntegrationsOpen(!isIntegrationsOpen)
+                setIsCalendarSettingsOpen(false)
+                setIsPlatformDropdownOpen(false)
+                setIsDatePickerOpen(false)
+                setIsFilterOpen(false)
+              }}
+              className="h-9 w-9 bg-slate-900 hover:bg-slate-800 text-white rounded-xl flex items-center justify-center shadow-sm transition-transform active:scale-95 cursor-pointer shrink-0"
+              title="Media Hub & Integrations (Google Drive, Canva, Ideas)"
+            >
+              <ImageIcon className="h-4 w-4 text-white" />
+            </button>
+
+            {/* INTEGRATIONS POPOVER (Matching Image 1 EXACTLY) */}
+            {isIntegrationsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40 bg-black/5"
+                  onClick={() => setIsIntegrationsOpen(false)}
+                />
+
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-84 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl rounded-3xl overflow-hidden z-50 animate-scale-in text-left">
+                  {/* Top Header Tabs */}
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 h-12 px-4 bg-slate-50/50 dark:bg-slate-800/40">
+                    <div className="flex items-center gap-6 h-full">
+                      {/* Tab 1: Google Drive */}
+                      <button
+                        onClick={() => setActiveIntegrationTab("drive")}
+                        className={`h-full flex items-center gap-1.5 relative px-1 transition-all ${
+                          activeIntegrationTab === "drive" ? "opacity-100" : "opacity-40 hover:opacity-75"
+                        }`}
+                      >
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                          <path d="M19.43 12.98L12 21.36L4.57 12.98L6.87 9.17H17.13L19.43 12.98Z" fill="#4CAF50" />
+                          <path d="M15.43 2H8.57L5.13 7.82H18.87L15.43 2Z" fill="#FFC107" />
+                          <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
+                        </svg>
+                        {activeIntegrationTab === "drive" && (
+                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 dark:bg-white rounded-full" />
+                        )}
+                      </button>
+
+                      {/* Tab 2: Canva */}
+                      <button
+                        onClick={() => setActiveIntegrationTab("canva")}
+                        className={`h-full flex items-center gap-1.5 relative px-1 transition-all ${
+                          activeIntegrationTab === "canva" ? "opacity-100" : "opacity-40 hover:opacity-75"
+                        }`}
+                      >
+                        <div className="w-5 h-5 rounded-full bg-[#00C4CC] text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs">
+                          C
+                        </div>
+                        {activeIntegrationTab === "canva" && (
+                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 dark:bg-white rounded-full" />
+                        )}
+                      </button>
+
+                      {/* Tab 3: Ideas */}
+                      <button
+                        onClick={() => setActiveIntegrationTab("ideas")}
+                        className={`h-full flex items-center gap-1.5 relative px-1 transition-all ${
+                          activeIntegrationTab === "ideas" ? "opacity-100" : "opacity-40 hover:opacity-75"
+                        }`}
+                      >
+                        <Lightbulb className="w-5 h-5 text-amber-500" />
+                        {activeIntegrationTab === "ideas" && (
+                          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 dark:bg-white rounded-full" />
+                        )}
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => setIsIntegrationsOpen(false)}
+                      className="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Tab Body Contents */}
+                  <div className="p-6 text-center">
+                    {activeIntegrationTab === "drive" && (
+                      <div className="space-y-5 animate-fade-in">
+                        {/* Sub Header Badge */}
+                        <div className="flex items-center justify-center gap-2">
+                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                            <path d="M19.43 12.98L12 21.36L4.57 12.98L6.87 9.17H17.13L19.43 12.98Z" fill="#4CAF50" />
+                            <path d="M15.43 2H8.57L5.13 7.82H18.87L15.43 2Z" fill="#FFC107" />
+                            <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
+                          </svg>
+                          <span className="text-[10px] font-extrabold bg-slate-900 text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                            BETA
+                          </span>
+                        </div>
+
+                        {/* Large Circle Illustration */}
+                        <div className="w-24 h-24 mx-auto rounded-full bg-blue-50/70 dark:bg-slate-800/80 flex items-center justify-center shadow-inner">
+                          <svg className="w-14 h-14" viewBox="0 0 24 24" fill="none">
+                            <path d="M19.43 12.98L12 21.36L4.57 12.98L6.87 9.17H17.13L19.43 12.98Z" fill="#4CAF50" />
+                            <path d="M15.43 2H8.57L5.13 7.82H18.87L15.43 2Z" fill="#FFC107" />
+                            <path d="M2.14 7.82L5.57 13.64L2.14 19.45L2.14 7.82Z" fill="#2196F3" />
+                          </svg>
+                        </div>
+
+                        {/* Description */}
+                        <div>
+                          <h4 className="text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase mb-1">
+                            CONNECT GOOGLE DRIVE
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold max-w-[220px] mx-auto leading-relaxed">
+                            Upgrade to a Premium plan and create your content using Google Drive!
+                          </p>
+                        </div>
+
+                        {/* Action Button */}
+                        <button
+                          onClick={() => {
+                            setIsIntegrationsOpen(false)
+                            setIsDrivePickerOpen(true)
+                          }}
+                          className="w-full py-2.5 px-6 rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 hover:opacity-95 text-white font-black text-xs shadow-md transition-transform active:scale-98 flex items-center justify-center gap-1.5"
+                        >
+                          <span>Get premium</span>
+                          <span>💎</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {activeIntegrationTab === "canva" && (
+                      <div className="space-y-5 animate-fade-in">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-[#00C4CC] text-white font-extrabold text-[10px] flex items-center justify-center">
+                            C
+                          </div>
+                          <span className="text-[10px] font-extrabold bg-[#00C4CC] text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                            CANVA
+                          </span>
+                        </div>
+
+                        <div className="w-24 h-24 mx-auto rounded-full bg-teal-50 dark:bg-slate-800/80 flex items-center justify-center shadow-inner">
+                          <div className="w-14 h-14 rounded-full bg-[#00C4CC] text-white font-black text-2xl flex items-center justify-center shadow-md">
+                            C
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase mb-1">
+                            CONNECT CANVA
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold max-w-[220px] mx-auto leading-relaxed">
+                            Design and import beautiful social graphics directly from your Canva workspace!
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => setIsIntegrationsOpen(false)}
+                          className="w-full py-2.5 px-6 rounded-full bg-[#00C4CC] hover:bg-[#00b2b9] text-white font-black text-xs shadow-md transition-transform active:scale-98 flex items-center justify-center gap-1.5"
+                        >
+                          <span>Get premium</span>
+                          <span>💎</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {activeIntegrationTab === "ideas" && (
+                      <div className="space-y-5 animate-fade-in">
+                        <div className="flex items-center justify-center gap-2">
+                          <Lightbulb className="w-5 h-5 text-amber-500" />
+                          <span className="text-[10px] font-extrabold bg-amber-500 text-white px-2 py-0.5 rounded-md uppercase tracking-wider">
+                            AI IDEAS
+                          </span>
+                        </div>
+
+                        <div className="w-24 h-24 mx-auto rounded-full bg-amber-50 dark:bg-slate-800/80 flex items-center justify-center shadow-inner">
+                          <Sparkles className="w-12 h-12 text-amber-500" />
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase mb-1">
+                            CONTENT ASSISTANT
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold max-w-[220px] mx-auto leading-relaxed">
+                            Never run out of creative post ideas with AI-powered content recommendations!
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => setIsIntegrationsOpen(false)}
+                          className="w-full py-2.5 px-6 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-md transition-transform active:scale-98 flex items-center justify-center gap-1.5"
+                        >
+                          <span>Explore Ideas</span>
+                          <span>✨</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           {/* Primary CTA */}
-          <Button className="h-9 px-3.5 text-xs font-bold rounded-lg bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary)/0.9)] text-white gap-1.5 shadow-xs shrink-0">
+          <Button className="h-9 px-3.5 text-xs font-bold rounded-xl bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary)/0.9)] text-white gap-1.5 shadow-xs shrink-0">
             <Plus className="h-4 w-4" />
-            <span>{t("planner.actions.create_post")}</span>
+            <span className="whitespace-nowrap">{t("planner.actions.create_post")}</span>
           </Button>
         </div>
       </div>
@@ -600,3 +796,4 @@ export default function PlannerSubHeader() {
     </div>
   )
 }
+

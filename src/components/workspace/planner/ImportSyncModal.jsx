@@ -245,7 +245,10 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                   </span>
 
                   <button
-                    onClick={() => setIsDrivePickerOpen(true)}
+                    onClick={() => {
+                      handleClose()
+                      setIsDrivePickerOpen(true)
+                    }}
                     className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/20 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 transition-all group text-left"
                   >
                     <div className="flex items-start gap-3.5">

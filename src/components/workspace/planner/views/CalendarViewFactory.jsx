@@ -5,7 +5,7 @@ import WeekCompactView from "./WeekCompactView"
 import MonthView from "./MonthView"
 import DayHourlyView from "./DayHourlyView"
 
-export default function CalendarViewFactory({ viewMode, posts, currentDate }) {
+export default function CalendarViewFactory({ viewMode, posts, currentDate, onDriveFileDrop }) {
   const [isTransitioning, setIsTransitioning] = useState(false)
 
   // Smooth transition pulse when view mode or date changes
@@ -50,7 +50,7 @@ export default function CalendarViewFactory({ viewMode, posts, currentDate }) {
 
       case CALENDAR_VIEW_MODE.WEEK_HOURLY:
       default:
-        return <WeekHourlyView posts={posts} currentDate={currentDate} />
+        return <WeekHourlyView posts={posts} currentDate={currentDate} onDriveFileDrop={onDriveFileDrop} />
     }
   }
 
