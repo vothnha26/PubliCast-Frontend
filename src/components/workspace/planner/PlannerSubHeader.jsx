@@ -78,16 +78,11 @@ export default function PlannerSubHeader() {
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
-              onClick={() => {
-                setPickerYear(currentDate.getFullYear())
-                setIsDatePickerOpen(!isDatePickerOpen)
-              }}
-              className="px-2.5 py-1 text-xs font-bold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-x border-border/60 flex items-center gap-1.5"
-              title="Click để chọn lịch cụ thể"
+              onClick={() => navigateDate("today")}
+              className="px-3 py-1 text-xs font-bold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-x border-border/60"
+              title="Nhảy về Hôm nay"
             >
-              <CalendarIcon className="h-3.5 w-3.5 text-[hsl(var(--sidebar-primary))]" />
-              <span>{t("planner.actions.today")}</span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              {t("planner.actions.today")}
             </button>
             <button
               onClick={() => navigateDate("next")}
@@ -98,15 +93,16 @@ export default function PlannerSubHeader() {
             </button>
           </div>
 
-          {/* Interactive Date Range Title */}
+          {/* Interactive Date Range Title - Single Unique Date Picker Trigger */}
           <button
             onClick={() => {
               setPickerYear(currentDate.getFullYear())
               setIsDatePickerOpen(!isDatePickerOpen)
             }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-transparent hover:border-border hover:bg-card text-foreground transition-all group"
-            title="Lọc / Chọn lịch cụ thể"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/60 bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-all shadow-2xs group"
+            title="Bấm để lọc / chọn lịch cụ thể"
           >
+            <CalendarIcon className="h-4 w-4 text-[hsl(var(--sidebar-primary))] shrink-0" />
             <span className="text-base font-extrabold tracking-tight">{formattedDateRange}</span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-transform duration-200" />
           </button>
