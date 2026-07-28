@@ -8,7 +8,7 @@ export default function WeekCompactView({ posts = [], currentDate = new Date() }
   const days = getWeekDays(currentDate)
 
   return (
-    <div className="flex-1 border border-border rounded-2xl bg-card overflow-hidden grid grid-cols-7 divide-x divide-border shadow-2xs select-none">
+    <div className="flex-1 border border-border rounded-2xl bg-card overflow-hidden grid grid-cols-7 divide-x divide-border shadow-2xs">
       {days.map((d) => {
         const dayPosts = posts.filter((p) => p.date === d.fullDate)
 

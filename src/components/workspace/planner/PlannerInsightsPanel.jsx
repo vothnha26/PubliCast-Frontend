@@ -18,7 +18,7 @@ export default function PlannerInsightsPanel() {
   const { t } = useTranslation()
 
   return (
-    <aside className="w-80 flex flex-col gap-5 border-l border-border bg-card p-5 shrink-0 select-none overflow-y-auto">
+    <aside className="w-80 flex flex-col gap-5 border-l border-border bg-card p-5 shrink-0 overflow-y-auto">
       {/* Title Header */}
       <div>
         <h3 className="text-lg font-bold tracking-tight text-foreground">{t("planner.insights.title")}</h3>

@@ -16,7 +16,7 @@ export default function WeekHourlyView({ posts = [], currentDate = new Date() })
   const days = getWeekDays(currentDate)
 
   return (
-    <div className="flex-1 border border-border rounded-2xl bg-card overflow-x-auto shadow-2xs select-none">
+    <div className="flex-1 border border-border rounded-2xl bg-card overflow-x-auto shadow-2xs">
       {/* 7 Days Header Row */}
       <div className="grid grid-cols-[70px_repeat(7,1fr)] border-b border-border bg-slate-50/50 dark:bg-slate-900/50">
         <div className="h-14 border-r border-border" />
@@ -48,7 +48,7 @@ export default function WeekHourlyView({ posts = [], currentDate = new Date() })
         {HOURS.map((hour) => (
           <div key={hour} className="grid grid-cols-[70px_repeat(7,1fr)] min-h-[96px] group">
             {/* Hour Label Column */}
-            <div className="p-2 border-r border-border text-[11px] font-semibold text-muted-foreground text-right pr-3 select-none bg-slate-50/30 dark:bg-slate-900/30">
+            <div className="p-2 border-r border-border text-[11px] font-semibold text-muted-foreground text-right pr-3 bg-slate-50/30 dark:bg-slate-900/30">
               {formatHour(hour)}
             </div>
 

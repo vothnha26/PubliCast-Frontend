@@ -50,7 +50,7 @@ export default function MonthView() {
   const [hoveredCell, setHoveredCell] = useState(null)
 
   return (
-    <div className="flex-1 border border-border rounded-2xl bg-card overflow-hidden flex flex-col shadow-2xs select-none">
+    <div className="flex-1 border border-border rounded-2xl bg-card overflow-hidden flex flex-col shadow-2xs">
       {/* Weekday Header */}
       <div className="grid grid-cols-7 border-b border-border bg-slate-50/50 dark:bg-slate-900/50">
         {WEEKDAY_KEYS.map((key) => (

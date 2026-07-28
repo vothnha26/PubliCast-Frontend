@@ -20,7 +20,7 @@ export default function CalendarViewFactory({ viewMode, posts, currentDate }) {
   const renderView = () => {
     if (isTransitioning) {
       return (
-        <div className="flex-1 border border-border rounded-2xl bg-card p-6 flex flex-col gap-4 animate-pulse select-none">
+        <div className="flex-1 border border-border rounded-2xl bg-card p-6 flex flex-col gap-4 animate-pulse">
           <div className="h-10 w-full bg-slate-200/70 dark:bg-slate-800/70 rounded-xl" />
           <div className="grid grid-cols-7 gap-3 flex-1 min-h-[450px]">
             {Array.from({ length: 7 }).map((_, i) => (

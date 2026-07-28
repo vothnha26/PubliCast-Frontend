@@ -77,7 +77,7 @@ export default function PlannerSubHeader() {
   }
 
   return (
-    <div className="space-y-3 pb-3 border-b border-border select-none">
+    <div className="space-y-3 pb-3 border-b border-border">
       {/* 3-Column Grid Layout: Pinned Exact Center View Switcher (0 Layout Shift!) */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-4">
         {/* Column 1 (Left): Unified Date Navigation & Clickable Date Picker Popover */}
@@ -261,7 +261,7 @@ export default function PlannerSubHeader() {
                   onClick={() => setIsFilterOpen(false)}
                 />
 
-                <div className="absolute right-0 top-full mt-2 w-72 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3.5 z-50 animate-scale-in select-none">
+                <div className="absolute right-0 top-full mt-2 w-72 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3.5 z-50 animate-scale-in">
                   <div className="flex items-center justify-between border-b border-border/60 pb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-foreground">
                       {t("planner.actions.filters")}

@@ -25,7 +25,7 @@ export default function DayHourlyView({ posts = [], currentDate = new Date() }) 
   const fullDate = `${year}-${month}-${dateStr}`
 
   return (
-    <div className="flex-1 border border-border rounded-2xl bg-card overflow-x-auto shadow-2xs select-none flex flex-col">
+    <div className="flex-1 border border-border rounded-2xl bg-card overflow-x-auto shadow-2xs flex flex-col">
       {/* Day Header Row */}
       <div className="grid grid-cols-[80px_1fr] border-b border-border bg-slate-50/50 dark:bg-slate-900/50">
         <div className="h-14 border-r border-border" />

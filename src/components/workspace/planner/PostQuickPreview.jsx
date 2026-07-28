@@ -12,7 +12,7 @@ export default function PostQuickPreview({ post }) {
   const platformConfig = SOCIAL_PLATFORM[post.platform] || SOCIAL_PLATFORM.INSTAGRAM
 
   return (
-    <div className="w-64 p-3 rounded-2xl bg-card border border-border shadow-xl space-y-2.5 animate-scale-in text-foreground z-50 select-none">
+    <div className="w-64 p-3 rounded-2xl bg-card border border-border shadow-xl space-y-2.5 animate-scale-in text-foreground z-50">
       {/* Header Badge */}
       <div className="flex items-center justify-between">
         <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold text-white ${platformConfig.dotClass}`}>
