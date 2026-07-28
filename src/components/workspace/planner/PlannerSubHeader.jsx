@@ -24,6 +24,8 @@ import {
   Bell,
 } from "lucide-react"
 
+import ImportSyncModal from "./ImportSyncModal"
+
 export default function PlannerSubHeader() {
   const { t } = useTranslation()
   const {
@@ -50,6 +52,7 @@ export default function PlannerSubHeader() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [isPlatformDropdownOpen, setIsPlatformDropdownOpen] = useState(false)
   const [isCalendarSettingsOpen, setIsCalendarSettingsOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [pickerYear, setPickerYear] = useState(currentDate.getFullYear())
 
   // Dynamic date range format using i18n
@@ -519,11 +522,14 @@ export default function PlannerSubHeader() {
                   <div className="my-1 border-t border-border/60" />
 
                   <button
-                    onClick={() => setIsCalendarSettingsOpen(false)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    onClick={() => {
+                      setIsCalendarSettingsOpen(false)
+                      setIsImportModalOpen(true)
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl font-semibold text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
                   >
-                    <div className="flex items-center gap-2.5 text-muted-foreground">
-                      <RefreshCw className="h-4 w-4" />
+                    <div className="flex items-center gap-2.5 text-muted-foreground group-hover:text-foreground">
+                      <RefreshCw className="h-4 w-4 text-indigo-500" />
                       <span className="text-foreground">Sync / Import / Export Data</span>
                     </div>
                   </button>
@@ -554,6 +560,18 @@ export default function PlannerSubHeader() {
             )}
           </div>
 
+          {/* Standalone Export Button (Matching Image 4) */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsImportModalOpen(true)}
+            className="h-9 px-3 text-xs font-semibold gap-1.5 border-border shadow-2xs bg-card hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground"
+            title="Import / Export Data"
+          >
+            <RefreshCw className="h-3.5 w-3.5 text-indigo-500" />
+            <span className="hidden sm:inline">Import / Export</span>
+          </Button>
+
           {/* Primary CTA */}
           <Button className="h-9 px-3.5 text-xs font-bold rounded-lg bg-[hsl(var(--sidebar-primary))] hover:bg-[hsl(var(--sidebar-primary)/0.9)] text-white gap-1.5 shadow-xs shrink-0">
             <Plus className="h-4 w-4" />
@@ -561,6 +579,12 @@ export default function PlannerSubHeader() {
           </Button>
         </div>
       </div>
+
+      {/* Interactive Import / Export / Sync Modal (Image 1, 2, 3, 4, 5 style) */}
+      <ImportSyncModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   )
 }
