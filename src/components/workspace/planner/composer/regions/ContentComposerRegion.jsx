@@ -17,6 +17,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { NETWORK_TAB_TEMPLATE, SOCIAL_PLATFORM } from "@/constants/postComposer"
+import { PlatformIcon } from "@/components/shared/PlatformIcon"
 import MediaUploadModal from "../MediaUploadModal"
 import ImageEditorModal from "../ImageEditorModal"
 import VideoEditorModal from "../VideoEditorModal"
@@ -249,13 +250,14 @@ export default function ContentComposerRegion({
                   key={plat}
                   type="button"
                   onClick={() => onSelectNetworkTab && onSelectNetworkTab(plat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase transition-all cursor-pointer ${
+                  title={plat}
+                  className={`flex items-center justify-center px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
                     activeNetworkTab === plat
-                      ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                      : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                      ? "bg-white dark:bg-slate-900 shadow-xs ring-1 ring-indigo-500/40"
+                      : "opacity-50 hover:opacity-90"
                   }`}
                 >
-                  {plat}
+                  <PlatformIcon platform={plat} size={18} />
                 </button>
               ))}
             </div>
