@@ -13,7 +13,6 @@ import {
   Plus,
   X,
   Pencil,
-  GripVertical,
   ChevronRight,
 } from "lucide-react"
 import { NETWORK_TAB_TEMPLATE, SOCIAL_PLATFORM } from "@/constants/postComposer"
@@ -278,7 +277,7 @@ export default function ContentComposerRegion({
 
           {/* THREADS SUB-TABS (Post 1, Post 2, + Add post) */}
           {isThreadsTab && (
-            <div className="flex items-center gap-2 pt-1.5">
+            <div className="flex items-center gap-2 pt-1.5 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-full w-fit">
               {(threadsConfig.threadPosts || [""]).map((_, index) => {
                 const isPostActive = activeThreadIndex === index
                 return (
@@ -286,17 +285,19 @@ export default function ContentComposerRegion({
                     key={index}
                     type="button"
                     onClick={() => onSetThreadActiveIndex && onSetThreadActiveIndex(index)}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all border cursor-pointer shadow-xs ${
+                    className={`flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full text-xs font-black transition-all cursor-pointer ${
                       isPostActive
-                        ? "border-slate-900 bg-slate-900 text-white dark:bg-white dark:text-slate-900 dark:border-white ring-2 ring-slate-900/20"
-                        : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
                     }`}
                   >
-                    <GripVertical className="h-3.5 w-3.5 opacity-60" />
+                    <span className="w-5 h-5 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-[9px] font-bold text-slate-600 dark:text-slate-200 shrink-0">
+                      {index + 1}
+                    </span>
                     <span>Post {index + 1}</span>
                     {threadsConfig.threadPosts.length > 1 && (
                       <X
-                        className="h-3.5 w-3.5 hover:text-rose-500 cursor-pointer ml-1"
+                        className="h-3.5 w-3.5 hover:text-rose-500 cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation()
                           if (onRemoveThreadPost) onRemoveThreadPost(index)
@@ -311,7 +312,7 @@ export default function ContentComposerRegion({
               <button
                 type="button"
                 onClick={onAddThreadPost}
-                className="w-8 h-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all cursor-pointer shadow-xs"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-white dark:hover:bg-slate-900 transition-all cursor-pointer shrink-0"
                 title="Thêm bài viết vào chuỗi Threads"
               >
                 <Plus className="h-4 w-4" />
