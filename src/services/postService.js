@@ -3,7 +3,7 @@ import { POST_ENDPOINTS, POST_UPLOAD_FORM_FIELD, POST_UPLOAD_QUERY_PARAM } from 
 
 export const postService = {
   async createPost(payload) {
-    const res = await api.post(POST_ENDPOINTS.CREATE, payload)
+    const res = await api.post(POST_ENDPOINTS.CREATE_V2, payload)
     return res.data.data // Unwrap { message, data } envelope in one place
   },
 

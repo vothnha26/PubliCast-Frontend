@@ -3,11 +3,15 @@ export const POST_ENDPOINTS = Object.freeze({
   CREATE: "/posts",
   BEST_TIMES: "/posts/best-times",
   // v2 (backend/src/routes/workspace/post.routes.v2.js) — same logic as v1
-  // (postService.getPlatformLimits / processUploadedFile), just the
-  // {message, data} envelope. v1 endpoints still exist for other callers;
+  // (postService.getPlatformLimits / processUploadedFile / createPost), just
+  // the {message, data} envelope. v1 endpoints still exist for other callers;
   // this composer path is migrated to v2 as the app moves that direction.
+  // CREATE_V2 additionally accepts networkOverrides (see PostNetworkOverride)
+  // — v1 CREATE silently ignores that field, so it's not just an envelope
+  // change here, it's required for per-network customization to persist.
   PLATFORM_LIMITS: "/v2/posts/platform-limits",
   UPLOAD: "/v2/posts/upload",
+  CREATE_V2: "/v2/posts",
 })
 
 // POST /v2/posts/upload contract (backend/src/routes/workspace/post.routes.v2.js +

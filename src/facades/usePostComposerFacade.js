@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { PlatformStrategyRegistry } from "@/strategies/PlatformStrategies"
 import { ErrorRegistry } from "@/services/ErrorRegistry"
-import { POST_TEMPLATES, NETWORK_TAB_TEMPLATE, POST_FORMAT_TO_POST_TYPE } from "@/constants/postComposer"
+import { POST_TEMPLATES, NETWORK_TAB_TEMPLATE, POST_FORMAT_TO_POST_TYPE, SOCIAL_PLATFORM } from "@/constants/postComposer"
 import { POST_CREATE_STATUS, POST_TYPE } from "@/constants/post"
 import { postService } from "@/services/postService"
 import { toast } from "sonner"
@@ -20,9 +20,9 @@ const mapPostFormatToPostType = (postFormat, mediaUrls) => {
 }
 
 export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, onClose) {
-  const [selectedPlatforms, setSelectedPlatforms] = useState(["THREADS", "YOUTUBE"])
+  const [selectedPlatforms, setSelectedPlatforms] = useState([SOCIAL_PLATFORM.THREADS, SOCIAL_PLATFORM.YOUTUBE])
   const [postFormat, setPostFormat] = useState("POST")
-  const [activePreviewPlatform, setActivePreviewPlatform] = useState("THREADS")
+  const [activePreviewPlatform, setActivePreviewPlatform] = useState(SOCIAL_PLATFORM.THREADS)
   const [deviceMode, setDeviceMode] = useState("mobile")
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -407,7 +407,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
       const strategy = PlatformStrategyRegistry.getStrategy(pId)
       const netCustom = draft.networkCustom?.[pId]
       const effectiveCap = (netCustom && !netCustom.useTemplate)
-        ? (pId === "THREADS" ? netCustom.threadPosts?.[0] : netCustom.caption)
+        ? (pId === SOCIAL_PLATFORM.THREADS ? netCustom.threadPosts?.[0] : netCustom.caption)
         : draft.caption
       const effectiveMed = (netCustom && !netCustom.useTemplate && netCustom.mediaUrls?.length > 0)
         ? netCustom.mediaUrls
@@ -428,25 +428,6 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     return validationIssues.some((issue) => issue.severity === "error")
   }, [validationIssues])
 
-  // Backend's Post model only stores one caption/mediaUrls for the whole
-  // post (targetPlatforms is just "where to publish the same content", not
-  // "N different payloads") — see backend/prisma/schema.prisma Post.caption/
-  // Post.mediaUrls. Per-platform custom content set via networkCustom is
-  // real in the composer's preview/validation, but gets silently discarded
-  // at submit time since there's nowhere for it to go. Warn instead of
-  // pretending it was saved.
-  const hasUnsentNetworkCustomizations = useMemo(() => {
-    return selectedPlatforms.some((pId) => {
-      const netCustom = draft.networkCustom?.[pId]
-      if (!netCustom || netCustom.useTemplate !== false) return false
-      const hasCaption = pId === "THREADS"
-        ? netCustom.threadPosts?.some((p) => p)
-        : !!netCustom.caption
-      const hasMedia = Array.isArray(netCustom.mediaUrls) && netCustom.mediaUrls.length > 0
-      return hasCaption || hasMedia
-    })
-  }, [selectedPlatforms, draft.networkCustom])
-
   // Submit handler.
   const handleSubmit = async (isDraftMode = false) => {
     if (!isDraftMode && hasBlockingErrors) {
@@ -454,17 +435,13 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
       return
     }
 
-    if (hasUnsentNetworkCustomizations) {
-      toast.warning("Nội dung/media riêng theo từng kênh hiện chỉ dùng để xem trước — bài đăng sẽ dùng nội dung ở tab \"Cài đặt chung\" cho tất cả nền tảng.")
-    }
-
     setIsSubmitting(true)
     try {
       let finalMediaUrls = draft.mediaUrls
       let finalMediaMeta = draft.mediaMeta
+      const resolved = new Map()
 
       if (pendingFiles.size > 0) {
-        const resolved = new Map()
         let lastSuccess = null
         for (const [blobUrl, file] of pendingFiles) {
           const result = await postService.uploadMedia(brandId, selectedPlatforms, file)
@@ -474,6 +451,31 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
         finalMediaUrls = draft.mediaUrls.map((url) => resolved.get(url) ?? url)
         finalMediaMeta = lastSuccess ? { sizeMb: lastSuccess.sizeMb, duration: lastSuccess.duration } : draft.mediaMeta
       }
+
+      // Build networkOverrides from draft.networkCustom — only platforms the
+      // user actually customized (useTemplate === false) get a row; blob:
+      // URLs picked while customizing a platform go through the same
+      // resolved map as the shared mediaUrls above, so overrides never ship
+      // a local-only blob reference to the backend.
+      const networkOverrides = selectedPlatforms
+        .map((pId) => {
+          const netCustom = draft.networkCustom?.[pId]
+          if (!netCustom || netCustom.useTemplate !== false) return null
+
+          if (pId === SOCIAL_PLATFORM.THREADS) {
+            const threadPosts = (netCustom.threadPosts || []).map((text) => ({
+              text,
+              mediaUrls: (netCustom.mediaUrls || []).map((url) => resolved.get(url) ?? url),
+            }))
+            if (!threadPosts.some((p) => p.text)) return null
+            return { platform: pId, useTemplate: false, threadPosts }
+          }
+
+          const overrideMediaUrls = (netCustom.mediaUrls || []).map((url) => resolved.get(url) ?? url)
+          if (!netCustom.caption && overrideMediaUrls.length === 0) return null
+          return { platform: pId, useTemplate: false, caption: netCustom.caption, mediaUrls: overrideMediaUrls }
+        })
+        .filter(Boolean)
 
       const payload = {
         brandId,
@@ -494,6 +496,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
           videoSizeMb: finalMediaMeta.sizeMb,
           videoDuration: finalMediaMeta.duration,
         },
+        ...(networkOverrides.length > 0 ? { networkOverrides } : {}),
       }
 
       await postService.createPost(payload)
@@ -546,7 +549,6 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     removeReviewer,
     validationIssues,
     hasBlockingErrors,
-    hasUnsentNetworkCustomizations,
     isSubmitting,
     handleSubmit,
   }
