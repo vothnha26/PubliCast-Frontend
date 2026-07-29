@@ -218,14 +218,6 @@ export default function ContentComposerRegion({
         onAcceptLibraryItems={handleAddLibraryUrls}
       />
 
-      {/* Interactive Image Editor Modal */}
-      <ImageEditorModal
-        isOpen={isImageEditorOpen}
-        onClose={() => setIsImageEditorOpen(false)}
-        imageUrl={editingImageUrl}
-        onSave={handleSaveEditedImage}
-      />
-
       {/* TOP HEADER: NETWORK TABS (ONLY WHEN EDIT BY NETWORK IS ON) */}
       {isEditByNetwork && (
         <div className="mb-4 space-y-3 pb-3 border-b border-slate-200 dark:border-slate-800 animate-fade-in">
