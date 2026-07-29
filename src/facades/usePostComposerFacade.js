@@ -78,17 +78,38 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     },
     // Custom content per network when isEditByNetwork is active
     networkCustom: {
-      THREADS: {
-        useTemplate: false,
-        activeThreadIndex: 0,
-        threadPosts: [
-          "",
-          "",
-        ],
+      FACEBOOK: {
+        useTemplate: true,
+        caption: "",
+        mediaUrls: [],
+      },
+      INSTAGRAM: {
+        useTemplate: true,
+        caption: "",
+        mediaUrls: [],
       },
       YOUTUBE: {
         useTemplate: true,
         caption: "",
+        mediaUrls: [],
+      },
+      TIKTOK: {
+        useTemplate: true,
+        caption: "",
+        mediaUrls: [],
+      },
+      BLUESKY: {
+        useTemplate: true,
+        caption: "",
+        mediaUrls: [],
+      },
+      THREADS: {
+        useTemplate: false,
+        activeThreadIndex: 0,
+        // Starts with exactly 1 post — addThreadPost is what grows this list
+        // when the user actually clicks "+", not a pre-seeded mock thread.
+        threadPosts: [""],
+        mediaUrls: [],
       },
     },
   })
@@ -110,15 +131,27 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     }))
   }, [])
 
-  // Adds files chosen in the composer to BOTH draft.mediaUrls (as local
-  // blob: URLs, for instant preview) and pendingFiles, keyed BY BLOB URL
-  // (not array index) — mediaUrls can also contain non-blob entries added
-  // via the "From URL" / "Media Library" tabs interleaved with local picks,
-  // so index-based pairing would silently mismatch a file with the wrong
-  // URL. No network call here — real upload only happens in handleSubmit.
-  const addPendingFiles = useCallback((files) => {
+  // Adds files chosen in the composer to draft.mediaUrls OR targetPlatform's
+  // networkCustom.mediaUrls (as local blob: URLs, for instant preview) and pendingFiles.
+  const addPendingFiles = useCallback((files, targetPlatform) => {
     const blobUrls = files.map((file) => URL.createObjectURL(file))
-    setDraft((prev) => ({ ...prev, mediaUrls: [...prev.mediaUrls, ...blobUrls] }))
+    setDraft((prev) => {
+      if (targetPlatform && targetPlatform !== NETWORK_TAB_TEMPLATE) {
+        const currentNet = prev.networkCustom[targetPlatform] || { useTemplate: true, caption: "", mediaUrls: [] }
+        return {
+          ...prev,
+          networkCustom: {
+            ...prev.networkCustom,
+            [targetPlatform]: {
+              ...currentNet,
+              mediaUrls: [...(currentNet.mediaUrls || []), ...blobUrls],
+            },
+          },
+        }
+      } else {
+        return { ...prev, mediaUrls: [...prev.mediaUrls, ...blobUrls] }
+      }
+    })
     setPendingFiles((prev) => {
       const next = new Map(prev)
       files.forEach((file, i) => next.set(blobUrls[i], file))
@@ -126,21 +159,45 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     })
   }, [])
 
-  // index refers to draft.mediaUrls — removePendingFile looks up that
-  // specific URL in the pendingFiles map rather than assuming positional
-  // alignment with a separate array.
-  const removePendingFile = useCallback((index) => {
+  // Removes file from draft.mediaUrls OR targetPlatform's networkCustom.mediaUrls
+  const removePendingFile = useCallback((index, targetPlatform) => {
     setDraft((prev) => {
-      const removedUrl = prev.mediaUrls[index]
-      if (removedUrl?.startsWith("blob:")) {
-        URL.revokeObjectURL(removedUrl)
-        setPendingFiles((prevFiles) => {
-          const next = new Map(prevFiles)
-          next.delete(removedUrl)
-          return next
-        })
+      let removedUrl = null
+      if (targetPlatform && targetPlatform !== NETWORK_TAB_TEMPLATE) {
+        const currentNet = prev.networkCustom[targetPlatform] || { useTemplate: true, caption: "", mediaUrls: [] }
+        const netMedia = currentNet.mediaUrls || []
+        removedUrl = netMedia[index]
+        const updatedMedia = netMedia.filter((_, i) => i !== index)
+        if (removedUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(removedUrl)
+          setPendingFiles((prevFiles) => {
+            const next = new Map(prevFiles)
+            next.delete(removedUrl)
+            return next
+          })
+        }
+        return {
+          ...prev,
+          networkCustom: {
+            ...prev.networkCustom,
+            [targetPlatform]: {
+              ...currentNet,
+              mediaUrls: updatedMedia,
+            },
+          },
+        }
+      } else {
+        removedUrl = prev.mediaUrls[index]
+        if (removedUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(removedUrl)
+          setPendingFiles((prevFiles) => {
+            const next = new Map(prevFiles)
+            next.delete(removedUrl)
+            return next
+          })
+        }
+        return { ...prev, mediaUrls: prev.mediaUrls.filter((_, i) => i !== index) }
       }
-      return { ...prev, mediaUrls: prev.mediaUrls.filter((_, i) => i !== index) }
     })
   }, [])
 
@@ -167,7 +224,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
   // Update custom caption for a specific (non-Threads) network
   const updateNetworkCaption = useCallback((platformId, value) => {
     setDraft((prev) => {
-      const currentNet = prev.networkCustom[platformId] || { useTemplate: true, caption: "" }
+      const currentNet = prev.networkCustom[platformId] || { useTemplate: true, caption: "", mediaUrls: [] }
       return {
         ...prev,
         networkCustom: {
@@ -178,10 +235,24 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     })
   }, [])
 
+  // Update custom mediaUrls array for a specific network
+  const updateNetworkMedia = useCallback((platformId, mediaUrls) => {
+    setDraft((prev) => {
+      const currentNet = prev.networkCustom[platformId] || { useTemplate: true, caption: "", mediaUrls: [] }
+      return {
+        ...prev,
+        networkCustom: {
+          ...prev.networkCustom,
+          [platformId]: { ...currentNet, mediaUrls },
+        },
+      }
+    })
+  }, [])
+
   // Toggle Use Template for a specific network
   const toggleUseTemplate = useCallback((platformId, value) => {
     setDraft((prev) => {
-      const currentNet = prev.networkCustom[platformId] || { useTemplate: true, caption: "" }
+      const currentNet = prev.networkCustom[platformId] || { useTemplate: true, caption: "", mediaUrls: [] }
       const newUseTemplate = value !== undefined ? value : !currentNet.useTemplate
       return {
         ...prev,
@@ -199,7 +270,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
   // Threads specific helpers (Multi-post Threading)
   const updateThreadPostText = useCallback((index, text) => {
     setDraft((prev) => {
-      const threadsState = prev.networkCustom.THREADS || { threadPosts: [""] }
+      const threadsState = prev.networkCustom.THREADS || { threadPosts: [""], mediaUrls: [] }
       const newPosts = [...threadsState.threadPosts]
       newPosts[index] = text
       return {
@@ -217,7 +288,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
 
   const addThreadPost = useCallback(() => {
     setDraft((prev) => {
-      const threadsState = prev.networkCustom.THREADS || { threadPosts: [""] }
+      const threadsState = prev.networkCustom.THREADS || { threadPosts: [""], mediaUrls: [] }
       const newPosts = [...threadsState.threadPosts, ""]
       return {
         ...prev,
@@ -235,7 +306,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
 
   const removeThreadPost = useCallback((index) => {
     setDraft((prev) => {
-      const threadsState = prev.networkCustom.THREADS || { threadPosts: [""] }
+      const threadsState = prev.networkCustom.THREADS || { threadPosts: [""], mediaUrls: [] }
       if (threadsState.threadPosts.length <= 1) return prev
       const newPosts = threadsState.threadPosts.filter((_, i) => i !== index)
       return {
@@ -254,7 +325,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
 
   const setThreadActiveIndex = useCallback((index) => {
     setDraft((prev) => {
-      const threadsState = prev.networkCustom.THREADS || { threadPosts: [""] }
+      const threadsState = prev.networkCustom.THREADS || { threadPosts: [""], mediaUrls: [] }
       return {
         ...prev,
         networkCustom: {
@@ -268,13 +339,23 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     })
   }, [])
 
-  // Toggle selected platform
+  // Toggle selected platform. Also keeps activeNetworkTab (compose pane, left
+  // column) in sync with selectedPlatforms (icon row) — without this, deselecting
+  // the platform currently open in the compose pane left its tab pointing at a
+  // platform no longer in the tab list (isThreadsTab etc. stayed true with no
+  // visible active tab to show it), and re-selecting it didn't restore focus to
+  // that tab even though its networkCustom data was never lost.
   const togglePlatform = useCallback((platformId) => {
     setSelectedPlatforms((prev) => {
       const isSelected = prev.includes(platformId)
       const next = isSelected ? prev.filter((p) => p !== platformId) : [...prev, platformId]
-      if (!isSelected) setActivePreviewPlatform(platformId)
-      else if (next.length > 0) setActivePreviewPlatform(next[0])
+      if (!isSelected) {
+        setActivePreviewPlatform(platformId)
+        setActiveNetworkTab(platformId)
+      } else {
+        if (next.length > 0) setActivePreviewPlatform(next[0])
+        setActiveNetworkTab((prevTab) => (prevTab === platformId ? NETWORK_TAB_TEMPLATE : prevTab))
+      }
       return next
     })
   }, [])
@@ -309,14 +390,19 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
   }, [])
 
   // Real-time validation issues via Strategy Pattern & ErrorRegistry.
-  // pendingFiles/platformLimits let validateMediaFiles (PlatformStrategies)
-  // reject a bad file (size/format) before it's ever uploaded — see
-  // addPendingFiles above.
   const validationIssues = useMemo(() => {
     let allErrors = []
     selectedPlatforms.forEach((pId) => {
       const strategy = PlatformStrategyRegistry.getStrategy(pId)
-      const pErrors = strategy.validate(draft.caption, draft.mediaUrls, postFormat, {
+      const netCustom = draft.networkCustom?.[pId]
+      const effectiveCap = (netCustom && !netCustom.useTemplate)
+        ? (pId === "THREADS" ? netCustom.threadPosts?.[0] : netCustom.caption)
+        : draft.caption
+      const effectiveMed = (netCustom && !netCustom.useTemplate && netCustom.mediaUrls?.length > 0)
+        ? netCustom.mediaUrls
+        : draft.mediaUrls
+
+      const pErrors = strategy.validate(effectiveCap || "", effectiveMed || [], postFormat, {
         youtubeOptions: draft.youtubeOptions,
         pendingFiles: [...pendingFiles.values()],
         platformLimits,
@@ -331,17 +417,34 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     return validationIssues.some((issue) => issue.severity === "error")
   }, [validationIssues])
 
-  // Submit handler. pendingFiles only reach Cloudinary here — chosen files
-  // are never uploaded at selection time (see addPendingFiles), only
-  // previewed via blob: URLs. hasBlockingErrors already rejects any file
-  // that fails PlatformLimit client-side (validateMediaFiles), so by the
-  // time this runs every pendingFile is expected to pass the real
-  // server-side check too — a failure here is treated as unexpected
-  // (network/race condition), not the normal validation path.
+  // Backend's Post model only stores one caption/mediaUrls for the whole
+  // post (targetPlatforms is just "where to publish the same content", not
+  // "N different payloads") — see backend/prisma/schema.prisma Post.caption/
+  // Post.mediaUrls. Per-platform custom content set via networkCustom is
+  // real in the composer's preview/validation, but gets silently discarded
+  // at submit time since there's nowhere for it to go. Warn instead of
+  // pretending it was saved.
+  const hasUnsentNetworkCustomizations = useMemo(() => {
+    return selectedPlatforms.some((pId) => {
+      const netCustom = draft.networkCustom?.[pId]
+      if (!netCustom || netCustom.useTemplate !== false) return false
+      const hasCaption = pId === "THREADS"
+        ? netCustom.threadPosts?.some((p) => p)
+        : !!netCustom.caption
+      const hasMedia = Array.isArray(netCustom.mediaUrls) && netCustom.mediaUrls.length > 0
+      return hasCaption || hasMedia
+    })
+  }, [selectedPlatforms, draft.networkCustom])
+
+  // Submit handler.
   const handleSubmit = async (isDraftMode = false) => {
     if (!isDraftMode && hasBlockingErrors) {
       toast.error("Vui lòng khắc phục các lỗi vi phạm trước khi gửi duyệt / lên lịch!")
       return
+    }
+
+    if (hasUnsentNetworkCustomizations) {
+      toast.warning("Nội dung/media riêng theo từng kênh hiện chỉ dùng để xem trước — bài đăng sẽ dùng nội dung ở tab \"Cài đặt chung\" cho tất cả nền tảng.")
     }
 
     setIsSubmitting(true)
@@ -350,9 +453,6 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
       let finalMediaMeta = draft.mediaMeta
 
       if (pendingFiles.size > 0) {
-        // Replace each blob: URL with its real Cloudinary URL in place —
-        // draft.mediaUrls can also hold non-blob entries added via the
-        // "From URL" / "Media Library" tabs, which must survive untouched.
         const resolved = new Map()
         let lastSuccess = null
         for (const [blobUrl, file] of pendingFiles) {
@@ -377,9 +477,6 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
           : POST_CREATE_STATUS.SCHEDULED,
         mediaUrls: finalMediaUrls,
         type: mapPostFormatToPostType(postFormat, finalMediaUrls),
-        // videoSizeMb/videoDuration keys match what post.service.js reads
-        // (_preparePostData → mediaInfo.sizeMb/duration) for platform-limit
-        // validation.
         options: {
           ...draft.presets,
           youtube: draft.youtubeOptions,
@@ -408,6 +505,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     updateYoutubeOption,
     addPendingFiles,
     removePendingFile,
+    updateNetworkMedia,
     pendingFiles,
     platformLimits,
     updatePreset,
@@ -437,6 +535,7 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     removeReviewer,
     validationIssues,
     hasBlockingErrors,
+    hasUnsentNetworkCustomizations,
     isSubmitting,
     handleSubmit,
   }

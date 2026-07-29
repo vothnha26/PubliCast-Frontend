@@ -12,11 +12,14 @@ import {
   Lock,
   Plus,
   X,
+  Pencil,
   GripVertical,
   ChevronRight,
 } from "lucide-react"
 import { NETWORK_TAB_TEMPLATE, SOCIAL_PLATFORM } from "@/constants/postComposer"
 import MediaUploadModal from "../MediaUploadModal"
+import ImageEditorModal from "../ImageEditorModal"
+import VideoEditorModal from "../VideoEditorModal"
 
 export default function ContentComposerRegion({
   caption = "",
@@ -25,6 +28,7 @@ export default function ContentComposerRegion({
   onMediaChange,
   onAddPendingFiles,
   onRemovePendingFile,
+  onUpdateNetworkMedia,
   pendingFiles,
   maxCharacters = 300,
   maxHashtags = 30,
@@ -49,13 +53,23 @@ export default function ContentComposerRegion({
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false)
   const [mediaModalType, setMediaModalType] = useState("image") // "image" | "video"
 
+  // Image Editor Modal State
+  const [isImageEditorOpen, setIsImageEditorOpen] = useState(false)
+  const [editingImageIndex, setEditingImageIndex] = useState(null)
+  const [editingImageUrl, setEditingImageUrl] = useState("")
+
+  // Video Editor Modal State
+  const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false)
+  const [editingVideoIndex, setEditingVideoIndex] = useState(null)
+  const [editingVideoUrl, setEditingVideoUrl] = useState("")
+
   // Current tab network config
   const isTemplateTab = activeNetworkTab === NETWORK_TAB_TEMPLATE
   const isThreadsTab = activeNetworkTab === SOCIAL_PLATFORM.THREADS
   const currentNetworkConfig = networkCustom[activeNetworkTab] || {}
   const isUseTemplate = currentNetworkConfig.useTemplate ?? true
   const activeThreadIndex = currentNetworkConfig.activeThreadIndex || 0
-  const threadsConfig = networkCustom.THREADS || { threadPosts: ["", ""] }
+  const threadsConfig = networkCustom.THREADS || { threadPosts: [""] }
 
   // Active caption text for current network context
   let activeCaption = caption
@@ -64,6 +78,48 @@ export default function ContentComposerRegion({
       activeCaption = threadsConfig.threadPosts[activeThreadIndex] || ""
     } else {
       activeCaption = currentNetworkConfig.caption || ""
+    }
+  }
+
+  // Active mediaUrls array for current network context
+  let activeMediaUrls = mediaUrls
+  if (isEditByNetwork && !isTemplateTab && !isUseTemplate && Array.isArray(currentNetworkConfig.mediaUrls)) {
+    activeMediaUrls = currentNetworkConfig.mediaUrls
+  }
+
+  const openMediaEditor = (idx, url) => {
+    if (isVideoUrl(url)) {
+      setEditingVideoIndex(idx)
+      setEditingVideoUrl(url)
+      setIsVideoEditorOpen(true)
+    } else {
+      setEditingImageIndex(idx)
+      setEditingImageUrl(url)
+      setIsImageEditorOpen(true)
+    }
+  }
+
+  const handleSaveEditedImage = (newUrl) => {
+    if (editingImageIndex !== null && newUrl) {
+      const updated = [...activeMediaUrls]
+      updated[editingImageIndex] = newUrl
+      if (isEditByNetwork && !isTemplateTab && !isUseTemplate) {
+        if (onUpdateNetworkMedia) onUpdateNetworkMedia(activeNetworkTab, updated)
+      } else {
+        onMediaChange(updated)
+      }
+    }
+  }
+
+  const handleSaveEditedVideo = (newUrl) => {
+    if (editingVideoIndex !== null && newUrl) {
+      const updated = [...activeMediaUrls]
+      updated[editingVideoIndex] = newUrl
+      if (isEditByNetwork && !isTemplateTab && !isUseTemplate) {
+        if (onUpdateNetworkMedia) onUpdateNetworkMedia(activeNetworkTab, updated)
+      } else {
+        onMediaChange(updated)
+      }
     }
   }
 
@@ -77,40 +133,51 @@ export default function ContentComposerRegion({
     }
   }
 
-  // Files picked here are NOT uploaded yet — only kept as local blob: URLs
-  // for preview (addPendingFiles) plus the raw File for later. Real upload
-  // to Cloudinary only happens in usePostComposerFacade's handleSubmit, so a
-  // file that fails PlatformLimit (checked client-side by
-  // PlatformStrategies' validateMediaFiles against pendingFiles) blocks
-  // Submit via the normal validation-error path instead of ever reaching
-  // the network.
   const handleUploadFiles = (files) => {
     if (files.length === 0) return
     setShowMediaMenu(false)
-    if (onAddPendingFiles) onAddPendingFiles(files)
+    if (onAddPendingFiles) {
+      if (isEditByNetwork && !isTemplateTab && !isUseTemplate) {
+        onAddPendingFiles(files, activeNetworkTab)
+      } else {
+        onAddPendingFiles(files)
+      }
+    }
   }
 
-  // URL / library items are already-hosted media (not raw Files to upload),
-  // so they go straight into mediaUrls — no pendingFiles entry, no
-  // PlatformLimit pre-check (nothing to validate before submit; the backend
-  // still checks size/format for real uploads only, not arbitrary URLs).
   const handleAddMediaUrl = (url) => {
     if (url) {
-      onMediaChange([...mediaUrls, url])
+      if (isEditByNetwork && !isTemplateTab && !isUseTemplate) {
+        if (onUpdateNetworkMedia) onUpdateNetworkMedia(activeNetworkTab, [...activeMediaUrls, url])
+      } else {
+        onMediaChange([...mediaUrls, url])
+      }
     }
   }
 
   const handleAddLibraryUrls = (urls) => {
     if (urls && urls.length > 0) {
-      onMediaChange([...mediaUrls, ...urls])
+      if (isEditByNetwork && !isTemplateTab && !isUseTemplate) {
+        if (onUpdateNetworkMedia) onUpdateNetworkMedia(activeNetworkTab, [...activeMediaUrls, ...urls])
+      } else {
+        onMediaChange([...mediaUrls, ...urls])
+      }
     }
   }
 
   const handleRemoveMedia = (index) => {
-    if (onRemovePendingFile) {
-      onRemovePendingFile(index)
+    if (isEditByNetwork && !isTemplateTab && !isUseTemplate) {
+      if (onRemovePendingFile) {
+        onRemovePendingFile(index, activeNetworkTab)
+      } else if (onUpdateNetworkMedia) {
+        onUpdateNetworkMedia(activeNetworkTab, activeMediaUrls.filter((_, i) => i !== index))
+      }
     } else {
-      onMediaChange(mediaUrls.filter((_, i) => i !== index))
+      if (onRemovePendingFile) {
+        onRemovePendingFile(index)
+      } else {
+        onMediaChange(mediaUrls.filter((_, i) => i !== index))
+      }
     }
   }
 
@@ -149,6 +216,14 @@ export default function ContentComposerRegion({
         onAcceptFiles={handleUploadFiles}
         onAcceptUrl={handleAddMediaUrl}
         onAcceptLibraryItems={handleAddLibraryUrls}
+      />
+
+      {/* Interactive Image Editor Modal */}
+      <ImageEditorModal
+        isOpen={isImageEditorOpen}
+        onClose={() => setIsImageEditorOpen(false)}
+        imageUrl={editingImageUrl}
+        onSave={handleSaveEditedImage}
       />
 
       {/* TOP HEADER: NETWORK TABS (ONLY WHEN EDIT BY NETWORK IS ON) */}
@@ -202,7 +277,7 @@ export default function ContentComposerRegion({
           {/* THREADS SUB-TABS (Post 1, Post 2, + Add post) */}
           {isThreadsTab && (
             <div className="flex items-center gap-2 pt-1.5">
-              {(threadsConfig.threadPosts || ["", ""]).map((_, index) => {
+              {(threadsConfig.threadPosts || [""]).map((_, index) => {
                 const isPostActive = activeThreadIndex === index
                 return (
                   <button
@@ -279,9 +354,9 @@ export default function ContentComposerRegion({
           />
 
           {/* Media Thumbnails Area */}
-          {mediaUrls.length > 0 && (
+          {activeMediaUrls.length > 0 && (
             <div id="input-media-dropzone" className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
-              {mediaUrls.map((url, idx) => (
+              {activeMediaUrls.map((url, idx) => (
                 <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 shrink-0 group shadow-xs">
                   {isVideoUrl(url) ? (
                     <video src={url} className="w-full h-full object-cover" muted />
@@ -290,8 +365,16 @@ export default function ContentComposerRegion({
                   )}
                   <button
                     type="button"
+                    onClick={() => openMediaEditor(idx, url)}
+                    className="absolute top-1 left-1 p-1 bg-black/75 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-amber-400"
+                    title={isVideoUrl(url) ? "Chỉnh sửa video" : "Chỉnh sửa hình ảnh"}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleRemoveMedia(idx)}
-                    className="absolute top-1 right-1 p-1 bg-black/75 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    className="absolute top-1 right-1 p-1 bg-black/75 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-rose-400"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -524,6 +607,22 @@ export default function ContentComposerRegion({
           </div>
         </>
       )}
+
+      {/* Image Editor Modal */}
+      <ImageEditorModal
+        isOpen={isImageEditorOpen}
+        onClose={() => setIsImageEditorOpen(false)}
+        imageUrl={editingImageUrl}
+        onSave={handleSaveEditedImage}
+      />
+
+      {/* Video Editor Modal */}
+      <VideoEditorModal
+        isOpen={isVideoEditorOpen}
+        onClose={() => setIsVideoEditorOpen(false)}
+        videoUrl={editingVideoUrl}
+        onSave={handleSaveEditedVideo}
+      />
     </div>
   )
 }

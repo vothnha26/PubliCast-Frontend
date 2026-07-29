@@ -27,6 +27,7 @@ export default function PostComposerModal({
     updateYoutubeOption,
     addPendingFiles,
     removePendingFile,
+    updateNetworkMedia,
     pendingFiles,
     updatePreset,
     updateNetworkCaption,
@@ -112,6 +113,7 @@ export default function PostComposerModal({
                 onMediaChange={(newUrls) => updateDraft("mediaUrls", newUrls)}
                 onAddPendingFiles={addPendingFiles}
                 onRemovePendingFile={removePendingFile}
+                onUpdateNetworkMedia={updateNetworkMedia}
                 pendingFiles={pendingFiles}
                 maxCharacters={300}
                 maxHashtags={30}

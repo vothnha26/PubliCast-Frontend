@@ -23,33 +23,63 @@ function MediaPreview({ url, pendingFiles, className, alt }) {
 }
 
 /**
+ * Strategy Data Resolvers: Resolve effective caption and media per platform
+ */
+export function getEffectiveCaption(draft, platformId) {
+  if (!draft) return ""
+  const netCustom = draft.networkCustom?.[platformId]
+  if (netCustom && netCustom.useTemplate === false) {
+    if (platformId === SOCIAL_PLATFORM.THREADS) {
+      if (netCustom.threadPosts && netCustom.threadPosts.length > 0 && netCustom.threadPosts[0]) {
+        return netCustom.threadPosts[0]
+      }
+    } else if (netCustom.caption !== undefined && netCustom.caption !== null && netCustom.caption !== "") {
+      return netCustom.caption
+    }
+  }
+  return draft.caption || ""
+}
+
+export function getEffectiveMedia(draft, platformId) {
+  if (!draft) return []
+  const netCustom = draft.networkCustom?.[platformId]
+  if (netCustom && netCustom.useTemplate === false && Array.isArray(netCustom.mediaUrls) && netCustom.mediaUrls.length > 0) {
+    return netCustom.mediaUrls
+  }
+  return draft.mediaUrls || []
+}
+
+/**
  * Facebook Feed Preview Card
  */
 function FacebookPreviewCard({ draft, pendingFiles }) {
+  const caption = getEffectiveCaption(draft, SOCIAL_PLATFORM.FACEBOOK)
+  const mediaUrls = getEffectiveMedia(draft, SOCIAL_PLATFORM.FACEBOOK)
+
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 shadow-md text-slate-800 dark:text-slate-100 space-y-3 font-sans">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center text-xl overflow-hidden ring-2 ring-indigo-500/20">
-            ⚽
+          <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center text-xs font-bold overflow-hidden ring-2 ring-indigo-500/20">
+            —
           </div>
           <div>
-            <div className="font-extrabold text-sm flex items-center gap-1">
-              Sát Nút
+            <div className="font-extrabold text-sm flex items-center gap-1 text-slate-400 dark:text-slate-500">
+              Tên trang của bạn
             </div>
-            <div className="text-[11px] text-slate-400 font-medium">29 July · 🌐</div>
+            <div className="text-[11px] text-slate-400 font-medium">Vừa xong · 🌐</div>
           </div>
         </div>
         <MoreHorizontal className="h-5 w-5 text-slate-400 cursor-pointer" />
       </div>
 
       <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap font-medium">
-        {draft.caption || "Nội dung bài viết sẽ hiển thị ở đây..."}
+        {caption || "Nội dung bài viết sẽ hiển thị ở đây..."}
       </p>
 
-      {draft.mediaUrls?.length > 0 && (
+      {mediaUrls.length > 0 && (
         <div className="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 max-h-56 flex items-center justify-center">
-          <MediaPreview url={draft.mediaUrls[0]} pendingFiles={pendingFiles} alt="FB Preview" className="w-full h-full object-cover" />
+          <MediaPreview url={mediaUrls[0]} pendingFiles={pendingFiles} alt="FB Preview" className="w-full h-full object-cover" />
         </div>
       )}
 
@@ -75,6 +105,9 @@ function FacebookPreviewCard({ draft, pendingFiles }) {
  * Bluesky Feed Preview Card (Matches Wireframe 🦋)
  */
 function BlueskyPreviewCard({ draft, pendingFiles }) {
+  const caption = getEffectiveCaption(draft, SOCIAL_PLATFORM.BLUESKY)
+  const mediaUrls = getEffectiveMedia(draft, SOCIAL_PLATFORM.BLUESKY)
+
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 shadow-md text-slate-800 dark:text-slate-100 space-y-3 font-sans">
       <div className="flex items-start gap-3">
@@ -84,18 +117,18 @@ function BlueskyPreviewCard({ draft, pendingFiles }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div>
-              <span className="font-extrabold text-sm">Sát Nút</span>
-              <span className="text-xs text-slate-400 ml-1.5">@satnut.bsky.social</span>
+              <span className="font-extrabold text-sm text-slate-400 dark:text-slate-500">Tên trang của bạn</span>
+              <span className="text-xs text-slate-400 ml-1.5">@ten_tai_khoan</span>
             </div>
-            <span className="text-[11px] text-slate-400 font-medium">now</span>
+            <span className="text-[11px] text-slate-400 font-medium">Vừa xong</span>
           </div>
           <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed mt-1.5 whitespace-pre-wrap font-medium">
-            {draft.caption || "Preview post on Bluesky network..."}
+            {caption || "Preview post on Bluesky network..."}
           </p>
 
-          {draft.mediaUrls?.length > 0 && (
+          {mediaUrls.length > 0 && (
             <div className="mt-3 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 max-h-56">
-              <MediaPreview url={draft.mediaUrls[0]} pendingFiles={pendingFiles} alt="Bluesky media" className="w-full h-full object-cover" />
+              <MediaPreview url={mediaUrls[0]} pendingFiles={pendingFiles} alt="Bluesky media" className="w-full h-full object-cover" />
             </div>
           )}
 
@@ -114,14 +147,15 @@ function BlueskyPreviewCard({ draft, pendingFiles }) {
 /**
  * Threads Multi-Post Connected Thread Preview Card (Sleek SaaS Finish - Crisp Slate-300 Border)
  */
-function ThreadsPreviewCard({ draft, onSetThreadActiveIndex }) {
+function ThreadsPreviewCard({ draft, onSetThreadActiveIndex, pendingFiles }) {
   const threadsState = draft.networkCustom?.THREADS || {
     useTemplate: false,
     activeThreadIndex: 0,
-    threadPosts: ["", ""],
+    threadPosts: [""],
   }
-  const posts = threadsState.threadPosts?.length > 0 ? threadsState.threadPosts : ["", ""]
+  const posts = threadsState.threadPosts?.length > 0 ? threadsState.threadPosts : [""]
   const activeIndex = threadsState.activeThreadIndex || 0
+  const mediaUrls = getEffectiveMedia(draft, SOCIAL_PLATFORM.THREADS)
 
   return (
     <div className="w-full flex gap-3 font-sans select-none">
@@ -155,8 +189,8 @@ function ThreadsPreviewCard({ draft, onSetThreadActiveIndex }) {
               <div className="flex-1 min-w-0 pb-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100">satnut.bongda</span>
-                    <span className="text-[11px] text-slate-400 font-medium">1h</span>
+                    <span className="font-extrabold text-xs text-slate-400 dark:text-slate-500">ten_tai_khoan</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Vừa xong</span>
                   </div>
                   <MoreHorizontal className="h-4 w-4 text-slate-400 cursor-pointer" />
                 </div>
@@ -167,8 +201,18 @@ function ThreadsPreviewCard({ draft, onSetThreadActiveIndex }) {
                 </div>
 
                 <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-medium">
-                  {postText || (index === 0 ? draft.caption || "Thread post content..." : "Next thread post content...")}
+                  {postText || (index === 0 && draft.caption) || (
+                    <span className="text-slate-400 dark:text-slate-500 italic font-normal">
+                      Post {index + 1} — chưa có nội dung
+                    </span>
+                  )}
                 </p>
+
+                {index === 0 && mediaUrls.length > 0 && (
+                  <div className="mt-2 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 max-h-48">
+                    <MediaPreview url={mediaUrls[0]} pendingFiles={pendingFiles} alt="Threads media" className="w-full h-full object-cover" />
+                  </div>
+                )}
 
                 {/* Interactive Icons */}
                 <div className="flex items-center gap-4 mt-2.5 text-slate-500 text-xs">
@@ -213,23 +257,26 @@ function ThreadsPreviewCard({ draft, onSetThreadActiveIndex }) {
  * Instagram Preview Card
  */
 function InstagramPreviewCard({ draft, pendingFiles }) {
+  const caption = getEffectiveCaption(draft, SOCIAL_PLATFORM.INSTAGRAM)
+  const mediaUrls = getEffectiveMedia(draft, SOCIAL_PLATFORM.INSTAGRAM)
+
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 shadow-md text-slate-800 dark:text-slate-100 space-y-3 font-sans">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-0.5">
-            <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-xs">
-              ⚽
+          <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 p-0.5">
+            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-400">
+              —
             </div>
           </div>
-          <span className="font-extrabold text-xs">satnut_official</span>
+          <span className="font-extrabold text-xs text-slate-400 dark:text-slate-500">ten_tai_khoan</span>
         </div>
         <MoreHorizontal className="h-4 w-4 text-slate-400" />
       </div>
 
       <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-800">
-        {draft.mediaUrls?.[0] ? (
-          <MediaPreview url={draft.mediaUrls[0]} pendingFiles={pendingFiles} alt="IG Media" className="w-full h-full object-cover" />
+        {mediaUrls[0] ? (
+          <MediaPreview url={mediaUrls[0]} pendingFiles={pendingFiles} alt="IG Media" className="w-full h-full object-cover" />
         ) : (
           <div className="text-slate-400 text-xs font-semibold">Media Preview 📸</div>
         )}
@@ -244,9 +291,56 @@ function InstagramPreviewCard({ draft, pendingFiles }) {
       </div>
 
       <p className="text-xs line-clamp-2">
-        <span className="font-extrabold mr-1.5">satnut_official</span>
-        {draft.caption || "Caption text preview here..."}
+        <span className="font-extrabold mr-1.5 text-slate-400 dark:text-slate-500">ten_tai_khoan</span>
+        {caption || "Caption text preview here..."}
       </p>
+    </div>
+  )
+}
+
+/**
+ * TikTok Preview Card
+ */
+function TikTokPreviewCard({ draft, pendingFiles }) {
+  const caption = getEffectiveCaption(draft, SOCIAL_PLATFORM.TIKTOK)
+  const mediaUrls = getEffectiveMedia(draft, SOCIAL_PLATFORM.TIKTOK)
+
+  return (
+    <div className="w-full max-w-[280px] mx-auto aspect-[9/16] rounded-2xl overflow-hidden relative bg-slate-900 shadow-md border border-slate-300 dark:border-slate-800">
+      {mediaUrls[0] ? (
+        <MediaPreview url={mediaUrls[0]} pendingFiles={pendingFiles} alt="TikTok media" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs font-semibold">
+          Video Preview
+        </div>
+      )}
+
+      {/* Right side action icons overlay */}
+      <div className="absolute right-2 bottom-16 flex flex-col items-center gap-4 text-white">
+        <div className="w-9 h-9 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-500 border-2 border-white">
+          —
+        </div>
+        <div className="flex flex-col items-center gap-0.5">
+          <Heart className="h-6 w-6 cursor-pointer" />
+          <span className="text-[10px] font-bold">0</span>
+        </div>
+        <div className="flex flex-col items-center gap-0.5">
+          <MessageSquare className="h-6 w-6 cursor-pointer" />
+          <span className="text-[10px] font-bold">0</span>
+        </div>
+        <div className="flex flex-col items-center gap-0.5">
+          <Share2 className="h-6 w-6 cursor-pointer" />
+          <span className="text-[10px] font-bold">0</span>
+        </div>
+      </div>
+
+      {/* Bottom caption overlay */}
+      <div className="absolute left-0 right-14 bottom-3 px-3 text-white">
+        <div className="font-extrabold text-xs text-slate-300">@ten_tai_khoan</div>
+        <p className="text-xs leading-relaxed whitespace-pre-wrap font-medium mt-1 line-clamp-3">
+          {caption || "Caption sẽ hiển thị ở đây..."}
+        </p>
+      </div>
     </div>
   )
 }
@@ -255,17 +349,17 @@ function InstagramPreviewCard({ draft, pendingFiles }) {
  * YouTube Preview Card
  */
 function YouTubePreviewCard({ draft, pendingFiles }) {
+  const caption = getEffectiveCaption(draft, SOCIAL_PLATFORM.YOUTUBE)
+  const mediaUrls = getEffectiveMedia(draft, SOCIAL_PLATFORM.YOUTUBE)
+
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-3 shadow-md text-slate-800 dark:text-slate-100 space-y-2 font-sans">
       <div className="w-full h-44 bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center relative">
-        {draft.mediaUrls?.[0] ? (
-          <MediaPreview url={draft.mediaUrls[0]} pendingFiles={pendingFiles} alt="YT Thumbnail" className="w-full h-full object-cover" />
+        {mediaUrls[0] ? (
+          <MediaPreview url={mediaUrls[0]} pendingFiles={pendingFiles} alt="YT Thumbnail" className="w-full h-full object-cover" />
         ) : (
           <div className="text-red-500 text-3xl font-black">▶️</div>
         )}
-        <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1.5 py-0.5 rounded font-mono font-bold">
-          03:45
-        </div>
       </div>
       <div className="flex items-start gap-2.5 pt-1">
         <div className="w-8 h-8 rounded-full bg-red-600 text-white font-bold flex items-center justify-center shrink-0 shadow-xs">
@@ -273,9 +367,9 @@ function YouTubePreviewCard({ draft, pendingFiles }) {
         </div>
         <div>
           <h4 className="font-extrabold text-xs line-clamp-2 leading-tight">
-            {draft.title || draft.youtubeOptions?.title || draft.caption || "Video Title Preview"}
+            {draft.title || draft.youtubeOptions?.title || caption || "Video Title Preview"}
           </h4>
-          <p className="text-[10px] text-slate-400 mt-1 font-semibold">Sát Nút Channel • 0 views • Just now</p>
+          <p className="text-[10px] text-slate-400 mt-1 font-semibold text-slate-400">Kênh của bạn</p>
         </div>
       </div>
     </div>
@@ -288,13 +382,15 @@ function YouTubePreviewCard({ draft, pendingFiles }) {
 export function renderPreviewCard(platformId, draft, postFormat, onSetThreadActiveIndex, pendingFiles) {
   switch (platformId) {
     case SOCIAL_PLATFORM.THREADS:
-      return <ThreadsPreviewCard draft={draft} onSetThreadActiveIndex={onSetThreadActiveIndex} />
+      return <ThreadsPreviewCard draft={draft} onSetThreadActiveIndex={onSetThreadActiveIndex} pendingFiles={pendingFiles} />
     case SOCIAL_PLATFORM.BLUESKY:
       return <BlueskyPreviewCard draft={draft} pendingFiles={pendingFiles} />
     case SOCIAL_PLATFORM.INSTAGRAM:
       return <InstagramPreviewCard draft={draft} pendingFiles={pendingFiles} />
     case SOCIAL_PLATFORM.YOUTUBE:
       return <YouTubePreviewCard draft={draft} pendingFiles={pendingFiles} />
+    case SOCIAL_PLATFORM.TIKTOK:
+      return <TikTokPreviewCard draft={draft} pendingFiles={pendingFiles} />
     case SOCIAL_PLATFORM.FACEBOOK:
     default:
       return <FacebookPreviewCard draft={draft} pendingFiles={pendingFiles} />
