@@ -77,6 +77,7 @@ export default function VideoEditorModal({
 
   // CROP & Trim & Aspect Ratio State
   const [currentTime, setCurrentTime] = useState("0:00")
+  const [playheadTime, setPlayheadTime] = useState(0)
   const [duration, setDuration] = useState(10)
   const [startTime, setStartTime] = useState(0)
   const [endTime, setEndTime] = useState(10)
@@ -226,8 +227,9 @@ export default function VideoEditorModal({
   }
 
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
+    if (videoRef.current && !isDraggingPlayhead.current) {
       const t = videoRef.current.currentTime
+      setPlayheadTime(t)
       const mins = Math.floor(t / 60)
       const secs = Math.floor(t % 60).toString().padStart(2, "0")
       setCurrentTime(`${mins}:${secs}`)
@@ -391,7 +393,9 @@ export default function VideoEditorModal({
     }
   }, [sampleVideo, duration])
 
-  // Drag handles & range box event listeners for trimming
+  const rafIdRef = useRef(null)
+
+  // Drag handles & range box event listeners for trimming with requestAnimationFrame
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!timelineRef.current || duration <= 0) return
@@ -403,37 +407,64 @@ export default function VideoEditorModal({
       )
         return
 
-      const rect = timelineRef.current.getBoundingClientRect()
-      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-      const targetSec = pct * duration
-
-      if (isDraggingPlayhead.current) {
-        if (videoRef.current) {
-          videoRef.current.currentTime = targetSec
-        }
-      } else if (isDraggingStartHandle.current) {
-        setStartTime(Math.min(targetSec, endTime - 0.5))
-      } else if (isDraggingEndHandle.current) {
-        setEndTime(Math.max(targetSec, startTime + 0.5))
-      } else if (isDraggingRangeBox.current) {
-        const win = dragRangeWindowSec.current
-        const newStart = Math.max(0, Math.min(duration - win, targetSec - dragRangeStartOffsetSec.current))
-        const newEnd = Math.min(duration, newStart + win)
-        setStartTime(newStart)
-        setEndTime(newEnd)
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
       }
+
+      rafIdRef.current = requestAnimationFrame(() => {
+        const rect = timelineRef.current.getBoundingClientRect()
+        const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+        const targetSec = Math.max(0, Math.min(duration, pct * duration))
+
+        if (isDraggingPlayhead.current) {
+          setPlayheadTime(targetSec)
+          if (videoRef.current) {
+            videoRef.current.currentTime = targetSec
+          }
+        } else if (isDraggingStartHandle.current) {
+          const newStart = Math.min(targetSec, endTime - 0.2)
+          setStartTime(newStart)
+          setPlayheadTime(newStart)
+          if (videoRef.current) {
+            videoRef.current.currentTime = newStart
+          }
+        } else if (isDraggingEndHandle.current) {
+          const newEnd = Math.max(targetSec, startTime + 0.2)
+          setEndTime(newEnd)
+          setPlayheadTime(newEnd)
+          if (videoRef.current) {
+            videoRef.current.currentTime = newEnd
+          }
+        } else if (isDraggingRangeBox.current) {
+          const win = dragRangeWindowSec.current
+          const newStart = Math.max(0, Math.min(duration - win, targetSec - dragRangeStartOffsetSec.current))
+          const newEnd = Math.min(duration, newStart + win)
+          setStartTime(newStart)
+          setEndTime(newEnd)
+          setPlayheadTime(newStart)
+          if (videoRef.current) {
+            videoRef.current.currentTime = newStart
+          }
+        }
+      })
     }
 
     const handleMouseUp = () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+      }
       isDraggingPlayhead.current = false
       isDraggingStartHandle.current = false
       isDraggingEndHandle.current = false
       isDraggingRangeBox.current = false
     }
 
-    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mousemove", handleMouseMove, { passive: true })
     window.addEventListener("mouseup", handleMouseUp)
     return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current)
+      }
       window.removeEventListener("mousemove", handleMouseMove)
       window.removeEventListener("mouseup", handleMouseUp)
     }
@@ -775,7 +806,19 @@ export default function VideoEditorModal({
             {/* RICH FILMSTRIP TIMELINE TRACK WITH TIME RULER & PLAYHEAD PIN (Mockup 1) */}
             <div className="w-full max-w-2xl px-2 py-1 flex flex-col items-center select-none shrink-0">
               {/* Time Ruler Track (Timestamp Labels & Tick Marks) */}
-              <div className="w-full relative h-6 flex items-center justify-between text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+              <div
+                className="w-full relative h-6 flex items-center justify-between text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 mb-0.5 cursor-pointer"
+                onClick={(e) => {
+                  if (!timelineRef.current || duration <= 0) return
+                  const rect = timelineRef.current.getBoundingClientRect()
+                  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+                  const targetSec = pct * duration
+                  setPlayheadTime(targetSec)
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = targetSec
+                  }
+                }}
+              >
                 <span>0:00</span>
                 <div className="flex-1 mx-4 flex justify-between items-center opacity-40">
                   {[...Array(15)].map((_, i) => (
@@ -789,7 +832,7 @@ export default function VideoEditorModal({
                   <div
                     className="absolute top-0 flex flex-col items-center -translate-x-1/2 cursor-grab active:cursor-grabbing z-30 transition-none group/pin"
                     style={{
-                      left: `${Math.max(0, Math.min(100, (videoRef.current ? videoRef.current.currentTime / duration : 0) * 100))}%`,
+                      left: `${Math.max(0, Math.min(100, (playheadTime / duration) * 100))}%`,
                     }}
                     onMouseDown={(e) => {
                       e.stopPropagation()
@@ -797,7 +840,7 @@ export default function VideoEditorModal({
                     }}
                   >
                     <div className="bg-black text-white text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded-md shadow-md border border-slate-800 whitespace-nowrap group-hover/pin:scale-110 transition-transform">
-                      {formatTime(videoRef.current ? videoRef.current.currentTime : 0)}
+                      {formatTime(playheadTime)}
                     </div>
                     <div className="w-0.5 h-12 bg-black dark:bg-white shadow-sm pointer-events-none" />
                   </div>
@@ -812,6 +855,7 @@ export default function VideoEditorModal({
                   const rect = timelineRef.current.getBoundingClientRect()
                   const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
                   const targetSec = pct * duration
+                  setPlayheadTime(targetSec)
                   if (videoRef.current) {
                     videoRef.current.currentTime = targetSec
                   }
