@@ -91,6 +91,36 @@ function loadImageElement(src) {
   })
 }
 
+// A cropped copy of the source image with a real Konva Blur filter baked in
+// via cache() — Konva only rasterizes filters on cache(), and cache() must
+// be re-run whenever blurRadius (or the crop/position) changes, otherwise
+// the node keeps showing a stale cached bitmap. useEffect with blurRadius in
+// the deps is what keeps the slider live instead of frozen at mount time.
+function CensureBlurBox({ image, x, y, width, height, crop, blurRadius, dragProps }) {
+  const nodeRef = useRef(null)
+
+  useEffect(() => {
+    nodeRef.current?.cache()
+    nodeRef.current?.getLayer()?.batchDraw()
+  }, [blurRadius, x, y, width, height, crop.x, crop.y, crop.width, crop.height])
+
+  return (
+    <KonvaImage
+      ref={nodeRef}
+      name="censure-box"
+      image={image}
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      crop={crop}
+      filters={[Konva.Filters.Blur]}
+      blurRadius={blurRadius}
+      {...dragProps}
+    />
+  )
+}
+
 // Konva's built-in filters run on the node itself (not a global CSS class),
 // so applying a preset means toggling which Konva.Filters functions are
 // attached plus setting their numeric params — this is what actually gets
@@ -315,7 +345,7 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
       const pos = e.target.getStage().getPointerPosition()
       isDrawingRef.current = true
       const id = `censure-${Date.now()}`
-      setCensureBoxes((prev) => [...prev, { id, x: pos.x, y: pos.y, width: 0, height: 0, mode: "blur" }])
+      setCensureBoxes((prev) => [...prev, { id, x: pos.x, y: pos.y, width: 0, height: 0, mode: "blur", blurAmount: 25 }])
       return
     }
     if (e.target === e.target.getStage()) {
@@ -364,6 +394,11 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
 
   const toggleCensureMode = (id) => {
     setCensureBoxes((prev) => prev.map((c) => (c.id === id ? { ...c, mode: c.mode === "blur" ? "black" : "blur" } : c)))
+    markDirty()
+  }
+
+  const updateCensureBlurAmount = (id, amount) => {
+    setCensureBoxes((prev) => prev.map((c) => (c.id === id ? { ...c, blurAmount: amount } : c)))
     markDirty()
   }
 
@@ -660,30 +695,68 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                     ))}
 
                     {/* Censure boxes — draggable once drawn, so a placed
-                        region can be repositioned without redrawing it. */}
-                    {censureBoxes.map((c) => (
-                      <Rect
-                        key={c.id}
-                        name="censure-box"
-                        x={Math.min(c.x, c.x + c.width)}
-                        y={Math.min(c.y, c.y + c.height)}
-                        width={Math.abs(c.width)}
-                        height={Math.abs(c.height)}
-                        fill={c.mode === "black" ? "#000000" : "rgba(15,23,42,0.55)"}
-                        filters={c.mode === "blur" ? [Konva.Filters.Blur] : []}
-                        blurRadius={c.mode === "blur" ? 12 : 0}
-                        draggable={activeTool === "CENSURE"}
-                        onDragEnd={(e) => {
+                        region can be repositioned without redrawing it.
+                        "blur" mode renders a second, cropped copy of the
+                        actual image (not a flat color) with Konva's real
+                        Blur filter — a filter has no visible effect on a
+                        solid-fill Rect since there's no pixel detail to
+                        soften, which is why the old version looked like it
+                        wasn't censoring anything. "black" mode stays a flat
+                        Rect since a solid cover doesn't need image data. */}
+                    {censureBoxes.map((c) => {
+                      const boxX = Math.min(c.x, c.x + c.width)
+                      const boxY = Math.min(c.y, c.y + c.height)
+                      const boxW = Math.abs(c.width)
+                      const boxH = Math.abs(c.height)
+                      const dragProps = {
+                        draggable: activeTool === "CENSURE",
+                        onDragEnd: (e) => {
                           const node = e.target
-                          const w = Math.abs(c.width)
-                          const h = Math.abs(c.height)
                           setCensureBoxes((prev) =>
-                            prev.map((box) => (box.id === c.id ? { ...box, x: node.x(), y: node.y(), width: w, height: h } : box))
+                            prev.map((box) => (box.id === c.id ? { ...box, x: node.x(), y: node.y(), width: boxW, height: boxH } : box))
                           )
                           markDirty()
-                        }}
-                      />
-                    ))}
+                        },
+                      }
+
+                      if (c.mode === "blur" && imgEl && imgAttrs.width > 0) {
+                        // Map the box's Stage coordinates back to the source
+                        // image's own pixel space (imgAttrs describes where/
+                        // how big the image is drawn on the Stage) so the
+                        // cropped copy shows the same content that sits
+                        // underneath it.
+                        const scaleX = imgEl.naturalWidth / imgAttrs.width
+                        const scaleY = imgEl.naturalHeight / imgAttrs.height
+                        const cropX = (boxX - imgAttrs.x) * scaleX
+                        const cropY = (boxY - imgAttrs.y) * scaleY
+                        return (
+                          <CensureBlurBox
+                            key={c.id}
+                            image={imgEl}
+                            x={boxX}
+                            y={boxY}
+                            width={boxW}
+                            height={boxH}
+                            crop={{ x: cropX, y: cropY, width: boxW * scaleX, height: boxH * scaleY }}
+                            blurRadius={c.blurAmount ?? 25}
+                            dragProps={dragProps}
+                          />
+                        )
+                      }
+
+                      return (
+                        <Rect
+                          key={c.id}
+                          name="censure-box"
+                          x={boxX}
+                          y={boxY}
+                          width={boxW}
+                          height={boxH}
+                          fill="#000000"
+                          {...dragProps}
+                        />
+                      )
+                    })}
 
                     {/* Frame preview — a live border drawn right on the
                         Stage so picking a preset/color/thickness is visible
@@ -1101,6 +1174,20 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                       >
                         {c.mode === "blur" ? "Làm mờ" : "Che đen"}
                       </button>
+                      {c.mode === "blur" && (
+                        <div className="flex items-center gap-1.5 pl-1">
+                          <input
+                            type="range"
+                            min={5}
+                            max={40}
+                            value={c.blurAmount ?? 25}
+                            onChange={(e) => updateCensureBlurAmount(c.id, Number(e.target.value))}
+                            className="w-20 accent-black"
+                            title="Độ mờ"
+                          />
+                          <span className="text-[10px] font-mono text-gray-500 w-6 text-right">{c.blurAmount ?? 25}</span>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => removeCensureBox(c.id)}
