@@ -8,7 +8,7 @@ import PlannerSubHeader from "@/components/workspace/planner/PlannerSubHeader"
 import CalendarViewFactory from "@/components/workspace/planner/views/CalendarViewFactory"
 import PlannerInsightsPanel from "@/components/workspace/planner/PlannerInsightsPanel"
 import PlannerSkeleton from "@/components/workspace/planner/PlannerSkeleton"
-import MinimalPostCreatorModal from "@/components/workspace/planner/MinimalPostCreatorModal"
+import PostComposerModal from "@/components/workspace/planner/composer/PostComposerModal"
 import GoogleDrivePickerModal from "@/components/workspace/planner/GoogleDrivePickerModal"
 
 export default function ContentPlannerPage() {
@@ -103,9 +103,9 @@ export default function ContentPlannerPage() {
         </>
       )}
 
-      {/* Minimal Post Creator Modal for Drive Import & New Post */}
+      {/* Comprehensive Post Composer Modal for Drive Import & New Post */}
       {postCreatorState && (
-        <MinimalPostCreatorModal
+        <PostComposerModal
           isOpen={postCreatorState.isOpen}
           onClose={() => setPostCreatorState(null)}
           brandId={activeBrand?.id}

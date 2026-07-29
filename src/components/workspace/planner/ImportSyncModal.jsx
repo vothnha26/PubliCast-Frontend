@@ -1,5 +1,4 @@
 import React, { useState, useRef } from "react"
-import { useTranslation } from "react-i18next"
 import {
   X,
   ChevronLeft,
@@ -46,7 +45,6 @@ export default function ImportSyncModal({ isOpen, onClose }) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [uploadError, setUploadError] = useState(null)
-  const [destination, setDestination] = useState("Lịch chính (Main Scheduler)")
   const [overwriteDuplicates, setOverwriteDuplicates] = useState(true)
   const [exportFormat, setExportFormat] = useState(EXPORT_FORMAT.CSV)
   const [exportRange, setExportRange] = useState(EXPORT_RANGE.MONTH)
@@ -77,16 +75,11 @@ export default function ImportSyncModal({ isOpen, onClose }) {
     setUploadError(null)
     if (!file) return
 
-    // Kiểm tra dung lượng file (5MB limit)
+    // Kiểm tra dung lượng file thực tế (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       setUploadError("Dung lượng tệp vượt quá 5MB. Vui lòng tải lên tệp nhỏ hơn.")
       setSelectedFile(file)
       return
-    }
-
-    // Mô phỏng kiểm tra vượt quá 1000 sự kiện
-    if (file.name.toLowerCase().includes("large") || file.name.toLowerCase().includes("q4")) {
-      setUploadError("Tệp vượt quá giới hạn 1000 sự kiện. Vui lòng chia nhỏ tệp.")
     }
 
     setSelectedFile(file)
@@ -100,14 +93,26 @@ export default function ImportSyncModal({ isOpen, onClose }) {
     }
   }
 
+  const handleDownloadCsvTemplate = () => {
+    const csvContent =
+      "Title,ScheduledDate,Time,Platform\n\"Bài viết mẫu 1\",2026-08-01,09:00,FACEBOOK\n\"Bài viết mẫu 2\",2026-08-02,14:30,INSTAGRAM\n"
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", "sample_planner.csv")
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    toast.success("Đã tải tệp mẫu sample_planner.csv về máy!")
+  }
+
   const handleImportSubmit = async () => {
     if (!selectedFile || uploadError) return
 
-    // CSV import chưa có endpoint backend tương ứng (đã khảo sát
-    // backend/src/routes/workspace/post.routes.js — không có route CSV) —
-    // chỉ ICS gọi API thật, CSV vẫn là placeholder rõ ràng, không giả vờ thành công.
     if (importStep !== IMPORT_STEP.UPLOAD_ICS) {
-      toast.error("Import CSV chưa khả dụng — backend chưa có endpoint tương ứng.")
+      toast.error("Import CSV chưa khả dụng — tính năng đang trong quá trình phát triển.")
       return
     }
 
@@ -133,9 +138,6 @@ export default function ImportSyncModal({ isOpen, onClose }) {
   }
 
   const handleExportSubmit = async () => {
-    // Chỉ .ics gọi API thật (GET /calendar-events/export-ics đã xác nhận hoạt
-    // động qua Postman). CSV/PDF/JSON chưa có endpoint backend tương ứng —
-    // báo lỗi rõ ràng thay vì giả vờ xuất thành công.
     if (exportFormat !== EXPORT_FORMAT.ICS) {
       toast.error(`Xuất định dạng .${exportFormat.toUpperCase()} chưa khả dụng — backend chưa có endpoint tương ứng.`)
       return
@@ -160,8 +162,6 @@ export default function ImportSyncModal({ isOpen, onClose }) {
         startDate = fmt(sunday)
         endDate = fmt(saturday)
       } else if (exportRange === EXPORT_RANGE.ALL) {
-        // BE yêu cầu bắt buộc startDate/endDate (400 nếu thiếu) — dùng khoảng
-        // rộng thay vì thật sự "tất cả", vì export-ics không có chế độ không giới hạn.
         startDate = "2020-01-01"
         endDate = "2030-12-31"
       } else {
@@ -190,7 +190,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
 
       {/* Modal Container */}
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-50 animate-scale-in">
-        {/* Header Modal với Tiêu đề đồng bộ Tiếng Việt */}
+        {/* Header Modal */}
         <div className="px-6 pt-5 pb-4 border-b border-border/60 flex items-center justify-between">
           <div>
             <h3 className="text-base font-extrabold text-foreground tracking-tight flex items-center gap-2">
@@ -203,13 +203,13 @@ export default function ImportSyncModal({ isOpen, onClose }) {
           </div>
           <button
             onClick={handleClose}
-            className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Tab Navigation Bar (Chuyển đổi Nhập / Xuất dữ liệu rõ ràng) */}
+        {/* Tab Navigation Bar */}
         <div className="px-6 pt-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-border/60">
           <div className="flex gap-2">
             <button
@@ -217,7 +217,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                 setActiveTab(MODAL_TAB.IMPORT)
                 setImportStep(IMPORT_STEP.SELECT)
               }}
-              className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 ${
+              className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === MODAL_TAB.IMPORT
                   ? "border-[hsl(var(--sidebar-primary))] text-[hsl(var(--sidebar-primary))]"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -229,7 +229,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
 
             <button
               onClick={() => setActiveTab(MODAL_TAB.EXPORT)}
-              className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 ${
+              className={`pb-2.5 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === MODAL_TAB.EXPORT
                   ? "border-[hsl(var(--sidebar-primary))] text-[hsl(var(--sidebar-primary))]"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -247,15 +247,15 @@ export default function ImportSyncModal({ isOpen, onClose }) {
             {/* Step 1: Chọn phương thức Nhập */}
             {importStep === IMPORT_STEP.SELECT && (
               <div className="space-y-4">
-                {/* Khối 1: Tệp Lịch & Bảng tính */}
                 <div className="space-y-2">
                   <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
                     Tệp Lịch & Bảng tính (File Upload)
                   </span>
 
+                  {/* Tile 1: ICS Import (Hoạt động) */}
                   <button
                     onClick={() => setImportStep(IMPORT_STEP.UPLOAD_ICS)}
-                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group text-left"
+                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group text-left cursor-pointer"
                   >
                     <div className="flex items-start gap-3.5">
                       <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform shrink-0">
@@ -271,33 +271,30 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                     <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 ml-2" />
                   </button>
 
-                  <button
-                    onClick={() => setImportStep(IMPORT_STEP.UPLOAD_CSV)}
-                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 hover:border-amber-200 dark:hover:border-amber-800 transition-all group text-left"
+                  {/* Tile 2: CSV Import (Sắp ra mắt - Disabled) */}
+                  <div
+                    onClick={() => toast.info("Tính năng Nhập từ CSV đang được phát triển (Sắp ra mắt).")}
+                    className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 bg-slate-100/40 dark:bg-slate-900/40 opacity-70 cursor-not-allowed text-left group"
                   >
                     <div className="flex items-start gap-3.5">
-                      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform shrink-0">
+                      <div className="p-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-500 shrink-0">
                         <FileSpreadsheet className="h-5 w-5" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-foreground">Nhập từ bảng tính CSV / Excel</h4>
-                          <span className="px-1.5 py-0.2 bg-amber-500 text-white text-[9px] font-black tracking-wider uppercase rounded-xs">
-                            PRO
+                          <h4 className="text-xs font-bold text-muted-foreground">Nhập từ bảng tính CSV / Excel</h4>
+                          <span className="px-2 py-0.5 bg-slate-300 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-black tracking-wider uppercase rounded-xs">
+                            SẮP RA MẮT
                           </span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Tạo bài viết hàng loạt từ bảng tính Excel hoặc CSV
+                        <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                          Tạo bài viết hàng loạt từ bảng tính Excel hoặc CSV (Đang phát triển)
                         </p>
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 ml-2" />
-                  </button>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 ml-2" />
+                  </div>
                 </div>
-
-                {/* Google Drive đã bỏ khỏi đây — dùng nút "Google Drive" trên
-                    toolbar chính (PlannerSubHeader.jsx) làm CỔNG DUY NHẤT vào
-                    GoogleDrivePickerModal, tránh nhiều nơi cùng làm 1 việc. */}
               </div>
             )}
 
@@ -307,7 +304,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                 <div className="flex items-center justify-between pb-1">
                   <button
                     onClick={() => setImportStep(IMPORT_STEP.SELECT)}
-                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs font-bold"
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     <span>Quay lại danh sách</span>
@@ -373,7 +370,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                         setSelectedFile(null)
                         setUploadError(null)
                       }}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -390,27 +387,12 @@ export default function ImportSyncModal({ isOpen, onClose }) {
 
                 {/* Tùy chọn cài đặt nhập */}
                 <div className="space-y-3 pt-2 border-t border-border/60">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-muted-foreground block">
-                      Thư mục đích (Destination)
-                    </label>
-                    <select
-                      value={destination}
-                      onChange={(e) => setDestination(e.target.value)}
-                      className="w-full h-9 px-3 text-xs bg-card border border-border rounded-xl font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    >
-                      <option value="Lịch chính (Main Scheduler)">Lịch chính (Main Scheduler)</option>
-                      <option value="Bản nháp (Drafts)">Thư mục Bản nháp (Drafts)</option>
-                      <option value="Chờ duyệt (Pending Approval)">Danh sách Chờ duyệt</option>
-                    </select>
-                  </div>
-
                   <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
                     <input
                       type="checkbox"
                       checked={overwriteDuplicates}
                       onChange={(e) => setOverwriteDuplicates(e.target.checked)}
-                      className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                      className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4 cursor-pointer"
                     />
                     <span>Ghi đè nếu phát hiện bài viết trùng lặp</span>
                   </label>
@@ -421,7 +403,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                   <Button
                     disabled={!selectedFile || !!uploadError || isProcessing}
                     onClick={handleImportSubmit}
-                    className="flex-1 h-9 text-xs font-bold bg-[hsl(var(--sidebar-primary))] text-white rounded-xl shadow-xs gap-2"
+                    className="flex-1 h-9 text-xs font-bold bg-[hsl(var(--sidebar-primary))] text-white rounded-xl shadow-xs gap-2 cursor-pointer"
                   >
                     {isProcessing ? (
                       <>
@@ -435,7 +417,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                       </>
                     )}
                   </Button>
-                  <Button variant="outline" onClick={handleClose} className="h-9 text-xs font-bold rounded-xl">
+                  <Button variant="outline" onClick={handleClose} className="h-9 text-xs font-bold rounded-xl cursor-pointer">
                     Hủy bỏ
                   </Button>
                 </div>
@@ -448,7 +430,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                 <div className="flex items-center justify-between pb-1">
                   <button
                     onClick={() => setImportStep(IMPORT_STEP.SELECT)}
-                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs font-bold"
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs font-bold cursor-pointer"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     <span>Quay lại danh sách</span>
@@ -484,7 +466,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                       <FileSpreadsheet className="h-4 w-4 text-amber-500" />
                       <span className="text-xs font-bold truncate">{selectedFile.name}</span>
                     </div>
-                    <button onClick={() => setSelectedFile(null)}>
+                    <button onClick={() => setSelectedFile(null)} className="cursor-pointer">
                       <Trash2 className="h-4 w-4 text-muted-foreground hover:text-rose-500" />
                     </button>
                   </div>
@@ -492,8 +474,8 @@ export default function ImportSyncModal({ isOpen, onClose }) {
 
                 <div className="flex items-center justify-between pt-1">
                   <button
-                    onClick={() => alert("Đã tải tệp mẫu sample_planner.csv về máy!")}
-                    className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1.5"
+                    onClick={handleDownloadCsvTemplate}
+                    className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download className="h-3.5 w-3.5" />
                     <span>Tải file CSV mẫu (Sample Template)</span>
@@ -504,12 +486,12 @@ export default function ImportSyncModal({ isOpen, onClose }) {
                   <Button
                     disabled={!selectedFile || isProcessing}
                     onClick={handleImportSubmit}
-                    className="flex-1 h-9 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl gap-2"
+                    className="flex-1 h-9 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl gap-2 cursor-pointer"
                   >
                     {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                     <span>Tải dữ liệu CSV lên</span>
                   </Button>
-                  <Button variant="outline" onClick={handleClose} className="h-9 text-xs font-bold rounded-xl">
+                  <Button variant="outline" onClick={handleClose} className="h-9 text-xs font-bold rounded-xl cursor-pointer">
                     Hủy bỏ
                   </Button>
                 </div>
@@ -528,7 +510,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button
                   onClick={() => setExportFormat(EXPORT_FORMAT.CSV)}
-                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                     exportFormat === EXPORT_FORMAT.CSV
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                       : "bg-slate-100/50 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-100"
@@ -540,7 +522,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
 
                 <button
                   onClick={() => setExportFormat(EXPORT_FORMAT.ICS)}
-                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                     exportFormat === EXPORT_FORMAT.ICS
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                       : "bg-slate-100/50 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-100"
@@ -552,7 +534,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
 
                 <button
                   onClick={() => setExportFormat(EXPORT_FORMAT.PDF)}
-                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                     exportFormat === EXPORT_FORMAT.PDF
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                       : "bg-slate-100/50 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-100"
@@ -564,7 +546,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
 
                 <button
                   onClick={() => setExportFormat(EXPORT_FORMAT.JSON)}
-                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                     exportFormat === EXPORT_FORMAT.JSON
                       ? "bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                       : "bg-slate-100/50 dark:bg-slate-800/40 border-transparent text-muted-foreground hover:bg-slate-100"
@@ -583,7 +565,7 @@ export default function ImportSyncModal({ isOpen, onClose }) {
               <select
                 value={exportRange}
                 onChange={(e) => setExportRange(e.target.value)}
-                className="w-full h-9 px-3 text-xs bg-card border border-border rounded-xl font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full h-9 px-3 text-xs bg-card border border-border rounded-xl font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
               >
                 <option value={EXPORT_RANGE.MONTH}>Tháng hiện tại</option>
                 <option value={EXPORT_RANGE.WEEK}>Tuần hiện tại</option>
@@ -595,12 +577,12 @@ export default function ImportSyncModal({ isOpen, onClose }) {
               <Button
                 disabled={isProcessing}
                 onClick={handleExportSubmit}
-                className="flex-1 h-9 text-xs font-bold bg-[hsl(var(--sidebar-primary))] text-white rounded-xl gap-2 shadow-xs"
+                className="flex-1 h-9 text-xs font-bold bg-[hsl(var(--sidebar-primary))] text-white rounded-xl gap-2 shadow-xs cursor-pointer"
               >
                 {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                 <span>Xuất dữ liệu .{exportFormat.toUpperCase()} ngay</span>
               </Button>
-              <Button variant="outline" onClick={handleClose} className="h-9 text-xs font-bold rounded-xl">
+              <Button variant="outline" onClick={handleClose} className="h-9 text-xs font-bold rounded-xl cursor-pointer">
                 Hủy bỏ
               </Button>
             </div>
@@ -615,11 +597,11 @@ export default function ImportSyncModal({ isOpen, onClose }) {
           </div>
         )}
 
-        {/* Khối Trợ giúp Định dạng File (Helper Card với Padding rộng rãi & Dịch Tiếng Việt theo Góp ý 3) */}
+        {/* Khối Trợ giúp Định dạng File */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900/80 border-t border-border/60 flex items-center justify-between">
           <button
             onClick={() => setShowFormatHelp(!showFormatHelp)}
-            className="flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+            className="flex items-center gap-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
           >
             <HelpCircle className="h-4 w-4 shrink-0" />
             <span>Hướng dẫn quy chuẩn định dạng tệp .CSV & .ICS</span>
