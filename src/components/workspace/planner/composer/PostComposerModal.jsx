@@ -107,6 +107,7 @@ export default function PostComposerModal({
 
               {/* REGION 3: Main Content Composer & Editor Region */}
               <ContentComposerRegion
+                brandId={brandId}
                 caption={draft.caption}
                 onChangeCaption={(val) => updateDraft("caption", val)}
                 mediaUrls={draft.mediaUrls}

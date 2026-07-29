@@ -38,6 +38,28 @@ const FILTER_PRESETS = [
   { id: "chrome", backendPreset: "dramatic", name: "Nổi bật", class: "contrast-125 saturate-150" },
 ]
 
+const ZOOM_PRESETS = [
+  { value: 25, label: "25%" },
+  { value: 26, label: "26% Fit to view" },
+  { value: 50, label: "50%" },
+  { value: 100, label: "100% Actual size" },
+  { value: 125, label: "125%" },
+  { value: 150, label: "150%" },
+  { value: 200, label: "200%" },
+  { value: 300, label: "300%" },
+  { value: 400, label: "400%" },
+  { value: 600, label: "600%" },
+  { value: 800, label: "800%" },
+  { value: 1600, label: "1600%" },
+]
+
+const formatTime = (secs) => {
+  if (isNaN(secs) || secs < 0) return "0:00"
+  const m = Math.floor(secs / 60)
+  const s = Math.floor(secs % 60).toString().padStart(2, "0")
+  return `${m}:${s}`
+}
+
 export default function VideoEditorModal({
   isOpen,
   onClose,
@@ -295,6 +317,106 @@ export default function VideoEditorModal({
     }
   }
 
+  // Filmstrip Thumbnails & Zoom Popover State
+  const [frameThumbnails, setFrameThumbnails] = useState([])
+  const [showZoomMenu, setShowZoomMenu] = useState(false)
+  const timelineRef = useRef(null)
+  const isDraggingStartHandle = useRef(false)
+  const isDraggingEndHandle = useRef(false)
+
+  // Generate 16 filmstrip frame thumbnails from video
+  useEffect(() => {
+    if (!sampleVideo || !duration || duration <= 0) return
+    let isCancelled = false
+
+    const generateFrames = async () => {
+      try {
+        const frameCount = 16
+        const tempVideo = document.createElement("video")
+        tempVideo.crossOrigin = "anonymous"
+        tempVideo.src = sampleVideo
+        tempVideo.muted = true
+        tempVideo.playsInline = true
+
+        await new Promise((resolve) => {
+          tempVideo.onloadeddata = resolve
+          tempVideo.onerror = resolve
+        })
+
+        if (isCancelled || !tempVideo.duration) return
+
+        const canvas = document.createElement("canvas")
+        canvas.width = 120
+        canvas.height = 68
+        const ctx = canvas.getContext("2d")
+
+        const thumbs = []
+        const step = tempVideo.duration / frameCount
+
+        for (let i = 0; i < frameCount; i++) {
+          if (isCancelled) break
+          const targetTime = Math.min(i * step, tempVideo.duration - 0.1)
+          tempVideo.currentTime = targetTime
+
+          await new Promise((res) => {
+            const onSeeked = () => {
+              tempVideo.removeEventListener("seeked", onSeeked)
+              res()
+            }
+            tempVideo.addEventListener("seeked", onSeeked)
+          })
+
+          if (ctx) {
+            ctx.drawImage(tempVideo, 0, 0, canvas.width, canvas.height)
+            thumbs.push(canvas.toDataURL("image/jpeg", 0.5))
+          }
+        }
+
+        if (!isCancelled && thumbs.length > 0) {
+          setFrameThumbnails(thumbs)
+        }
+      } catch (err) {
+        console.warn("[VideoEditorModal] Could not generate video frame thumbnails:", err)
+      }
+    }
+
+    generateFrames()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [sampleVideo, duration])
+
+  // Drag handles event listener for trimming
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!timelineRef.current || duration <= 0) return
+      if (!isDraggingStartHandle.current && !isDraggingEndHandle.current) return
+
+      const rect = timelineRef.current.getBoundingClientRect()
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+      const targetSec = pct * duration
+
+      if (isDraggingStartHandle.current) {
+        setStartTime(Math.min(targetSec, endTime - 0.5))
+      } else if (isDraggingEndHandle.current) {
+        setEndTime(Math.max(targetSec, startTime + 0.5))
+      }
+    }
+
+    const handleMouseUp = () => {
+      isDraggingStartHandle.current = false
+      isDraggingEndHandle.current = false
+    }
+
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [duration, startTime, endTime])
+
   const previewFilterStyle = {
     filter: `
       brightness(${100 + finetuneValues.Brightness}%)
@@ -468,7 +590,7 @@ export default function VideoEditorModal({
           {/* CENTER CANVAS & FLOATING ACTION BARS */}
           <div className="flex-1 flex flex-col items-center justify-between p-6 bg-white dark:bg-slate-900 relative overflow-hidden">
             
-            {/* TOP ACTION BAR OVERLAY: Undo, Redo, Zoom, Save audio [On|Off] */}
+            {/* TOP ACTION BAR OVERLAY: Undo, Redo, Zoom Dropdown, Save audio [On|Off] */}
             <div className="flex items-center gap-3 bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xs px-3 py-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs z-10">
               <button
                 type="button"
@@ -488,23 +610,59 @@ export default function VideoEditorModal({
 
               <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 my-auto mx-0.5" />
 
-              {/* Zoom controls */}
-              <div className="flex items-center gap-1 px-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+              {/* Zoom controls with Dropdown Menu (Mockup 2) */}
+              <div className="relative flex items-center gap-1 px-1 text-xs font-bold text-slate-700 dark:text-slate-300">
                 <button
                   type="button"
                   onClick={() => setZoomLevel((prev) => Math.max(10, prev - 5))}
-                  className="px-1 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  className="px-1.5 py-0.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer font-black"
                 >
                   -
                 </button>
-                <span>{zoomLevel}%</span>
+
                 <button
                   type="button"
-                  onClick={() => setZoomLevel((prev) => Math.min(100, prev + 5))}
-                  className="px-1 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  onClick={() => setShowZoomMenu((prev) => !prev)}
+                  className="px-2 py-0.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white cursor-pointer font-extrabold flex items-center gap-1"
+                >
+                  <span>{zoomLevel}%</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel((prev) => Math.min(1600, prev + 5))}
+                  className="px-1.5 py-0.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer font-black"
                 >
                   +
                 </button>
+
+                {/* Zoom Dropdown Menu Popover */}
+                {showZoomMenu && (
+                  <div className="absolute top-9 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 py-2 w-48 z-50 max-h-72 overflow-y-auto">
+                    {ZOOM_PRESETS.map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => {
+                          setZoomLevel(preset.value)
+                          setShowZoomMenu(false)
+                        }}
+                        className={`w-full text-left px-4 py-2 text-xs transition-colors flex flex-col cursor-pointer ${
+                          zoomLevel === preset.value
+                            ? "bg-slate-200/80 dark:bg-slate-700 text-slate-900 dark:text-white font-extrabold"
+                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50 font-medium"
+                        }`}
+                      >
+                        <span className="font-bold">{preset.value}%</span>
+                        {preset.label.includes(" ") && (
+                          <span className="text-[10px] text-slate-400 font-normal">
+                            {preset.label.split(" ").slice(1).join(" ")}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 my-auto mx-0.5" />
@@ -539,9 +697,9 @@ export default function VideoEditorModal({
               </div>
             </div>
 
-            {/* VIDEO PREVIEW CANVAS WITH FLOATING PLAYER CONTROLS */}
-            <div className="relative my-auto flex items-center justify-center max-w-full max-h-[360px] p-2">
-              <div className="relative group rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-black max-h-[320px] aspect-[9/16]">
+            {/* VIDEO PREVIEW CANVAS WITH FLOATING PLAYER CONTROLS (Mockup 1) */}
+            <div className="relative my-auto flex items-center justify-center max-w-full max-h-[300px] p-2">
+              <div className="relative group rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 bg-black max-h-[260px] aspect-[9/16]">
                 <video
                   ref={videoRef}
                   src={sampleVideo}
@@ -555,12 +713,13 @@ export default function VideoEditorModal({
                   playsInline
                 />
 
-                {/* Floating Video Controls Pill */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-2.5 py-1.5 rounded-full shadow-xl flex items-center gap-2 border border-slate-200 dark:border-slate-700 z-20">
+                {/* Floating Video Controls Pill (Play, Mute, Split) */}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-2.5 border border-slate-200/80 dark:border-slate-700 z-20">
                   <button
                     type="button"
                     onClick={togglePlay}
-                    className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-800 dark:text-white transition-transform cursor-pointer"
+                    className="w-7 h-7 rounded-full bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center justify-center text-slate-800 dark:text-white shadow-xs transition-all cursor-pointer active:scale-95 border border-slate-200 dark:border-slate-600"
+                    title={isPlaying ? "Tạm dừng" : "Phát"}
                   >
                     {isPlaying ? <Pause className="h-3.5 w-3.5 fill-current" /> : <Play className="h-3.5 w-3.5 fill-current ml-0.5" />}
                   </button>
@@ -568,10 +727,128 @@ export default function VideoEditorModal({
                   <button
                     type="button"
                     onClick={toggleMute}
-                    className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-800 dark:text-white transition-transform cursor-pointer"
+                    className="w-7 h-7 rounded-full bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center justify-center text-slate-800 dark:text-white shadow-xs transition-all cursor-pointer active:scale-95 border border-slate-200 dark:border-slate-600"
+                    title={isMuted ? "Bật tiếng" : "Tắt tiếng"}
                   >
                     {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (videoRef.current) {
+                        setStartTime(videoRef.current.currentTime)
+                      }
+                    }}
+                    className="px-3 py-1 rounded-full bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-white shadow-xs flex items-center gap-1.5 text-xs font-extrabold transition-all cursor-pointer active:scale-95 border border-slate-200 dark:border-slate-600"
+                    title="Tách clip tại vị trí hiện tại"
+                  >
+                    <Scissors className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>Split</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* RICH FILMSTRIP TIMELINE TRACK WITH TIME RULER & PLAYHEAD PIN (Mockup 1) */}
+            <div className="w-full max-w-2xl px-2 py-1 flex flex-col items-center select-none shrink-0">
+              {/* Time Ruler Track (Timestamp Labels & Tick Marks) */}
+              <div className="w-full relative h-6 flex items-center justify-between text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                <span>0:00</span>
+                <div className="flex-1 mx-4 flex justify-between items-center opacity-40">
+                  {[...Array(15)].map((_, i) => (
+                    <div key={i} className="w-0.5 h-1.5 bg-slate-400 dark:bg-slate-600 rounded-full" />
+                  ))}
+                </div>
+                <span>{formatTime(duration)}</span>
+
+                {/* Current Playhead Pin badge & vertical line */}
+                {duration > 0 && (
+                  <div
+                    className="absolute top-0 flex flex-col items-center -translate-x-1/2 cursor-pointer z-30 transition-none"
+                    style={{
+                      left: `${Math.max(0, Math.min(100, (videoRef.current ? videoRef.current.currentTime / duration : 0) * 100))}%`,
+                    }}
+                  >
+                    <div className="bg-black text-white text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded-md shadow-md border border-slate-800 whitespace-nowrap">
+                      {formatTime(videoRef.current ? videoRef.current.currentTime : 0)}
+                    </div>
+                    <div className="w-0.5 h-12 bg-black dark:bg-white shadow-sm pointer-events-none" />
+                  </div>
+                )}
+              </div>
+
+              {/* Filmstrip Frame Thumbnails Track Container */}
+              <div
+                ref={timelineRef}
+                onClick={(e) => {
+                  if (!timelineRef.current || duration <= 0) return
+                  const rect = timelineRef.current.getBoundingClientRect()
+                  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+                  const targetSec = pct * duration
+                  if (videoRef.current) {
+                    videoRef.current.currentTime = targetSec
+                  }
+                }}
+                className="w-full relative h-10 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-inner flex items-center cursor-pointer group"
+              >
+                {/* Render filmstrip frames or fallback gradient */}
+                {frameThumbnails.length > 0 ? (
+                  <div className="w-full h-full flex">
+                    {frameThumbnails.map((thumb, idx) => (
+                      <img
+                        key={idx}
+                        src={thumb}
+                        alt={`frame-${idx}`}
+                        className="flex-1 h-full object-cover border-r border-black/20 pointer-events-none"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex">
+                    {[...Array(16)].map((_, idx) => (
+                      <div
+                        key={idx}
+                        className="flex-1 h-full bg-gradient-to-r from-slate-800 via-indigo-950 to-slate-900 border-r border-slate-700/50"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Excluded start time mask */}
+                <div
+                  className="absolute top-0 bottom-0 left-0 bg-black/60 backdrop-blur-[1px] pointer-events-none z-10"
+                  style={{ width: `${(startTime / duration) * 100}%` }}
+                />
+
+                {/* Excluded end time mask */}
+                <div
+                  className="absolute top-0 bottom-0 right-0 bg-black/60 backdrop-blur-[1px] pointer-events-none z-10"
+                  style={{ width: `${100 - (endTime / duration) * 100}%` }}
+                />
+
+                {/* Left Gold Trim Handle */}
+                <div
+                  className="absolute top-0 bottom-0 w-3.5 bg-amber-400 border border-amber-500 rounded-l-md flex items-center justify-center cursor-ew-resize z-20 shadow-md group-hover:scale-105 transition-transform"
+                  style={{ left: `${(startTime / duration) * 100}%` }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation()
+                    isDraggingStartHandle.current = true
+                  }}
+                >
+                  <div className="w-0.5 h-4 bg-amber-800 rounded-full" />
+                </div>
+
+                {/* Right Gold Trim Handle */}
+                <div
+                  className="absolute top-0 bottom-0 w-3.5 bg-amber-400 border border-amber-500 rounded-r-md flex items-center justify-center cursor-ew-resize z-20 shadow-md group-hover:scale-105 transition-transform"
+                  style={{ left: `calc(${(endTime / duration) * 100}% - 14px)` }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation()
+                    isDraggingEndHandle.current = true
+                  }}
+                >
+                  <div className="w-0.5 h-4 bg-amber-800 rounded-full" />
                 </div>
               </div>
             </div>

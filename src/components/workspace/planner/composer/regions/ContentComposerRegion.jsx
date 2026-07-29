@@ -22,6 +22,7 @@ import ImageEditorModal from "../ImageEditorModal"
 import VideoEditorModal from "../VideoEditorModal"
 
 export default function ContentComposerRegion({
+  brandId,
   caption = "",
   onChangeCaption,
   mediaUrls = [],
@@ -617,6 +618,7 @@ export default function ContentComposerRegion({
         onClose={() => setIsVideoEditorOpen(false)}
         videoUrl={editingVideoUrl}
         onSave={handleSaveEditedVideo}
+        brandId={brandId}
       />
     </div>
   )
