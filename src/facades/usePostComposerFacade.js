@@ -1,9 +1,23 @@
-import { useState, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { PlatformStrategyRegistry } from "@/strategies/PlatformStrategies"
 import { ErrorRegistry } from "@/services/ErrorRegistry"
-import { POST_TEMPLATES, NETWORK_TAB_TEMPLATE } from "@/constants/postComposer"
+import { POST_TEMPLATES, NETWORK_TAB_TEMPLATE, POST_FORMAT_TO_POST_TYPE } from "@/constants/postComposer"
+import { POST_CREATE_STATUS, POST_TYPE } from "@/constants/post"
 import { postService } from "@/services/postService"
 import { toast } from "sonner"
+
+// postFormat "POST" has no direct Prisma PostType match — it means "a
+// regular feed post" on whichever platform, which Post.type instead
+// expresses as the media kind actually attached (see POST_FORMAT_TO_POST_TYPE
+// for the formats that do map 1:1).
+const mapPostFormatToPostType = (postFormat, mediaUrls) => {
+  const direct = POST_FORMAT_TO_POST_TYPE[postFormat]
+  if (direct) return direct
+  if (mediaUrls.length === 0) return POST_TYPE.TEXT
+  const firstExt = mediaUrls[0].split("?")[0].split(".").pop()?.toLowerCase()
+  const videoExts = ["mp4", "mov", "webm", "avi", "mkv"]
+  return videoExts.includes(firstExt) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE
+}
 
 export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, onClose) {
   const [selectedPlatforms, setSelectedPlatforms] = useState(["THREADS", "YOUTUBE"])
@@ -13,6 +27,20 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Raw File objects selected but not yet uploaded, keyed by their blob:
+  // preview URL (see addPendingFiles) — see PlatformStrategies'
+  // validateMediaFiles, which checks these against platformLimits client-side
+  // (File.size/name) so a bad file blocks Submit before ever reaching
+  // Cloudinary. Upload only actually happens inside handleSubmit.
+  const [pendingFiles, setPendingFiles] = useState(new Map())
+  const [platformLimits, setPlatformLimits] = useState([])
+
+  useEffect(() => {
+    postService.getPlatformLimits()
+      .then(setPlatformLimits)
+      .catch((err) => console.error("[usePostComposerFacade] Failed to load platform limits:", err))
+  }, [])
+
   // Edit by network state
   const [isEditByNetwork, setIsEditByNetwork] = useState(true)
   const [activeNetworkTab, setActiveNetworkTab] = useState(NETWORK_TAB_TEMPLATE)
@@ -21,7 +49,16 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
   const [draft, setDraft] = useState({
     title: "",
     caption: "",
+    // Local blob: URLs for preview until handleSubmit uploads pendingFiles
+    // for real and replaces them with Cloudinary URLs just before createPost.
     mediaUrls: [],
+    // Set by handleSubmit after the real upload — real size/duration read
+    // from POST /v2/posts/upload's response (Cloudinary metadata) for the
+    // most recently uploaded file, sent as options.videoSizeMb/videoDuration
+    // so backend's validationFacade checks real numbers instead of trusting
+    // an unset/absent client claim (see post.service.js _preparePostData,
+    // which previously always got null here since nothing populated it).
+    mediaMeta: { sizeMb: null, duration: null },
     customThumbnail: null,
     scheduledAt: initialScheduledAt || new Date().toISOString(),
     youtubeOptions: {
@@ -71,6 +108,40 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
       ...prev,
       youtubeOptions: { ...prev.youtubeOptions, [field]: value },
     }))
+  }, [])
+
+  // Adds files chosen in the composer to BOTH draft.mediaUrls (as local
+  // blob: URLs, for instant preview) and pendingFiles, keyed BY BLOB URL
+  // (not array index) — mediaUrls can also contain non-blob entries added
+  // via the "From URL" / "Media Library" tabs interleaved with local picks,
+  // so index-based pairing would silently mismatch a file with the wrong
+  // URL. No network call here — real upload only happens in handleSubmit.
+  const addPendingFiles = useCallback((files) => {
+    const blobUrls = files.map((file) => URL.createObjectURL(file))
+    setDraft((prev) => ({ ...prev, mediaUrls: [...prev.mediaUrls, ...blobUrls] }))
+    setPendingFiles((prev) => {
+      const next = new Map(prev)
+      files.forEach((file, i) => next.set(blobUrls[i], file))
+      return next
+    })
+  }, [])
+
+  // index refers to draft.mediaUrls — removePendingFile looks up that
+  // specific URL in the pendingFiles map rather than assuming positional
+  // alignment with a separate array.
+  const removePendingFile = useCallback((index) => {
+    setDraft((prev) => {
+      const removedUrl = prev.mediaUrls[index]
+      if (removedUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(removedUrl)
+        setPendingFiles((prevFiles) => {
+          const next = new Map(prevFiles)
+          next.delete(removedUrl)
+          return next
+        })
+      }
+      return { ...prev, mediaUrls: prev.mediaUrls.filter((_, i) => i !== index) }
+    })
   }, [])
 
   const updatePreset = useCallback((field, value) => {
@@ -237,24 +308,36 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     setReviewers((prev) => prev.filter((r) => r.id !== id))
   }, [])
 
-  // Real-time validation issues via Strategy Pattern & ErrorRegistry
+  // Real-time validation issues via Strategy Pattern & ErrorRegistry.
+  // pendingFiles/platformLimits let validateMediaFiles (PlatformStrategies)
+  // reject a bad file (size/format) before it's ever uploaded — see
+  // addPendingFiles above.
   const validationIssues = useMemo(() => {
     let allErrors = []
     selectedPlatforms.forEach((pId) => {
       const strategy = PlatformStrategyRegistry.getStrategy(pId)
-      const pFormat = postFormat
-      const pErrors = strategy.validate(draft.caption, draft.mediaUrls, pFormat, draft.youtubeOptions)
+      const pErrors = strategy.validate(draft.caption, draft.mediaUrls, postFormat, {
+        youtubeOptions: draft.youtubeOptions,
+        pendingFiles: [...pendingFiles.values()],
+        platformLimits,
+      })
       allErrors = [...allErrors, ...pErrors]
     })
     ErrorRegistry.setErrors(allErrors)
     return allErrors
-  }, [selectedPlatforms, draft, postFormat])
+  }, [selectedPlatforms, draft, postFormat, pendingFiles, platformLimits])
 
   const hasBlockingErrors = useMemo(() => {
     return validationIssues.some((issue) => issue.severity === "error")
   }, [validationIssues])
 
-  // Submit handler
+  // Submit handler. pendingFiles only reach Cloudinary here — chosen files
+  // are never uploaded at selection time (see addPendingFiles), only
+  // previewed via blob: URLs. hasBlockingErrors already rejects any file
+  // that fails PlatformLimit client-side (validateMediaFiles), so by the
+  // time this runs every pendingFile is expected to pass the real
+  // server-side check too — a failure here is treated as unexpected
+  // (network/race condition), not the normal validation path.
   const handleSubmit = async (isDraftMode = false) => {
     if (!isDraftMode && hasBlockingErrors) {
       toast.error("Vui lòng khắc phục các lỗi vi phạm trước khi gửi duyệt / lên lịch!")
@@ -263,19 +346,52 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
 
     setIsSubmitting(true)
     try {
+      let finalMediaUrls = draft.mediaUrls
+      let finalMediaMeta = draft.mediaMeta
+
+      if (pendingFiles.size > 0) {
+        // Replace each blob: URL with its real Cloudinary URL in place —
+        // draft.mediaUrls can also hold non-blob entries added via the
+        // "From URL" / "Media Library" tabs, which must survive untouched.
+        const resolved = new Map()
+        let lastSuccess = null
+        for (const [blobUrl, file] of pendingFiles) {
+          const result = await postService.uploadMedia(brandId, selectedPlatforms, file)
+          resolved.set(blobUrl, result.videoUrl)
+          lastSuccess = result
+        }
+        finalMediaUrls = draft.mediaUrls.map((url) => resolved.get(url) ?? url)
+        finalMediaMeta = lastSuccess ? { sizeMb: lastSuccess.sizeMb, duration: lastSuccess.duration } : draft.mediaMeta
+      }
+
       const payload = {
         brandId,
         title: draft.title || draft.youtubeOptions.title || "Bài viết mới",
         caption: draft.caption,
         targetPlatforms: selectedPlatforms,
         scheduledAt: draft.scheduledAt,
-        status: isDraftMode ? "DRAFT" : reviewers.length > 0 ? "PENDING_APPROVAL" : "SCHEDULED",
-        mediaUrls: draft.mediaUrls,
-        type: postFormat,
-        options: { ...draft.presets, youtube: draft.youtubeOptions },
+        status: isDraftMode
+          ? POST_CREATE_STATUS.DRAFT
+          : reviewers.length > 0
+          ? POST_CREATE_STATUS.PENDING_APPROVAL
+          : POST_CREATE_STATUS.SCHEDULED,
+        mediaUrls: finalMediaUrls,
+        type: mapPostFormatToPostType(postFormat, finalMediaUrls),
+        // videoSizeMb/videoDuration keys match what post.service.js reads
+        // (_preparePostData → mediaInfo.sizeMb/duration) for platform-limit
+        // validation.
+        options: {
+          ...draft.presets,
+          youtube: draft.youtubeOptions,
+          videoSizeMb: finalMediaMeta.sizeMb,
+          videoDuration: finalMediaMeta.duration,
+        },
       }
 
       await postService.createPost(payload)
+      draft.mediaUrls.forEach((url) => {
+        if (url.startsWith("blob:")) URL.revokeObjectURL(url)
+      })
       toast.success(isDraftMode ? "Đã lưu bản nháp thành công!" : "Đã gửi duyệt bài viết thành công!")
       if (onSuccess) onSuccess()
       if (onClose) onClose()
@@ -290,6 +406,10 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     draft,
     updateDraft,
     updateYoutubeOption,
+    addPendingFiles,
+    removePendingFile,
+    pendingFiles,
+    platformLimits,
     updatePreset,
     updateNetworkCaption,
     isEditByNetwork,

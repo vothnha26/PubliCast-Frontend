@@ -3,6 +3,19 @@
 // any SOCIAL_PLATFORM id, since it represents "no specific network selected."
 export const NETWORK_TAB_TEMPLATE = "TEMPLATE"
 
+// Schedule-dropdown action ids in ModalFooterRegion.jsx — distinct from
+// POST_CREATE_STATUS (constants/post.js): these are UI-level choices, only
+// DRAFT/SCHEDULE currently map to a real submit (see usePostComposerFacade's
+// handleSubmit(isDraftMode)); the rest are disabled pending backend support.
+export const SCHEDULE_ACTION = Object.freeze({
+  DRAFT: "DRAFT",
+  SCHEDULE: "SCHEDULE",
+  LIBRARY: "LIBRARY",
+  REVIEW: "REVIEW",
+  PUBLISH_NOW: "PUBLISH_NOW",
+  RECURRING: "RECURRING",
+})
+
 export const SOCIAL_PLATFORM = Object.freeze({
   BLUESKY: "BLUESKY",
   FACEBOOK: "FACEBOOK",
@@ -19,6 +32,22 @@ export const POST_FORMATS = Object.freeze({
   VIDEO: { id: "VIDEO", label: "Video", icon: "Film" },
   SHORT: { id: "SHORT", label: "Shorts", icon: "Play" },
   CAROUSEL: { id: "CAROUSEL", label: "Carousel", icon: "Images" },
+})
+
+// POST_FORMATS (composer UI concept — what kind of post the user is making
+// per-platform) is a different axis from Prisma's PostType enum (IMAGE,
+// VIDEO, CAROUSEL, REEL, STORY, SHORT, THREAD, PIN, TIKTOK_CAROUSEL, LINK,
+// TEXT, LIVE_VIDEO, ALBUM — backend/prisma/schema.prisma) — REEL/STORY/SHORT/
+// CAROUSEL happen to share the same name, but POST and VIDEO don't map
+// 1:1, since Post.type describes the media itself, not the platform slot.
+// mapPostFormatToPostType (usePostComposerFacade) resolves the ambiguous
+// ones by whether media is attached.
+export const POST_FORMAT_TO_POST_TYPE = Object.freeze({
+  REEL: "REEL",
+  STORY: "STORY",
+  SHORT: "SHORT",
+  CAROUSEL: "CAROUSEL",
+  VIDEO: "VIDEO",
 })
 
 export const TARGET_PLATFORMS = Object.freeze({

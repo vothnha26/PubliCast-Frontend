@@ -298,6 +298,21 @@
     "schedule_desc": "Lưu và lên lịch đăng bài",
     "publish_now_desc": "Đăng bài với thời gian hiện tại",
     "recurring_desc": "Lên lịch lặp lại hoặc sao chép sang thương hiệu khác",
-    "coming_soon": "Sắp ra mắt — chưa khả dụng"
+    "coming_soon": "Sắp ra mắt — chưa khả dụng",
+    "image_upload": "Tải ảnh lên",
+    "video_upload": "Tải video lên",
+    "from_computer": "Từ máy tính",
+    "from_url": "Từ URL",
+    "media_library": "Thư viện phương tiện",
+    "drag_drop_hint": "Bấm để chọn hoặc kéo thả tệp của bạn vào đây.",
+    "paste_url_placeholder": "Dán đường dẫn hình ảnh hoặc video tại đây...",
+    "accept": "Chấp nhận",
+    "selected_files": "Các tệp đã chọn ({{count}}):",
+    "supported_formats_image": "Định dạng hỗ trợ: JPG, PNG, WEBP, GIF (Tối đa 50MB)",
+    "supported_formats_video": "Định dạng hỗ trợ: MP4, MOV, WEBM (Tối đa 500MB)",
+    "media_url_label": "Địa chỉ URL phương tiện:",
+    "live_media_preview": "Xem trước phương tiện trực tiếp:",
+    "search_media_library_placeholder": "Tìm kiếm thư viện phương tiện...",
+    "uploading": "Đang tải lên..."
   }
 }

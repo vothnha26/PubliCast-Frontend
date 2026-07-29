@@ -2,10 +2,30 @@ import React from "react"
 import { SOCIAL_PLATFORM } from "@/constants/postComposer"
 import { ThumbsUp, MessageSquare, Share2, Heart, Send, Repeat, MoreHorizontal } from "lucide-react"
 
+// blob: URLs carry no filename/extension (URL.createObjectURL strips it), so
+// a pending file's real type must come from the File object itself
+// (pendingFiles, keyed by blob URL — see usePostComposerFacade's
+// addPendingFiles). Once uploaded, mediaUrls holds the real Cloudinary URL,
+// which does have a real extension to fall back on.
+function isVideoUrl(url, pendingFiles) {
+  if (!url) return false
+  const pendingType = pendingFiles?.get(url)?.type
+  if (pendingType) return pendingType.startsWith("video/")
+  return /\.(mp4|mov|webm|avi|mkv)(\?|$)/i.test(url)
+}
+
+function MediaPreview({ url, pendingFiles, className, alt }) {
+  return isVideoUrl(url, pendingFiles) ? (
+    <video src={url} className={className} muted />
+  ) : (
+    <img src={url} alt={alt} className={className} />
+  )
+}
+
 /**
  * Facebook Feed Preview Card
  */
-function FacebookPreviewCard({ draft }) {
+function FacebookPreviewCard({ draft, pendingFiles }) {
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 shadow-md text-slate-800 dark:text-slate-100 space-y-3 font-sans">
       <div className="flex items-center justify-between">
@@ -29,7 +49,7 @@ function FacebookPreviewCard({ draft }) {
 
       {draft.mediaUrls?.length > 0 && (
         <div className="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 max-h-56 flex items-center justify-center">
-          <img src={draft.mediaUrls[0]} alt="FB Preview" className="w-full h-full object-cover" />
+          <MediaPreview url={draft.mediaUrls[0]} pendingFiles={pendingFiles} alt="FB Preview" className="w-full h-full object-cover" />
         </div>
       )}
 
@@ -54,7 +74,7 @@ function FacebookPreviewCard({ draft }) {
 /**
  * Bluesky Feed Preview Card (Matches Wireframe 🦋)
  */
-function BlueskyPreviewCard({ draft }) {
+function BlueskyPreviewCard({ draft, pendingFiles }) {
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 shadow-md text-slate-800 dark:text-slate-100 space-y-3 font-sans">
       <div className="flex items-start gap-3">
@@ -75,7 +95,7 @@ function BlueskyPreviewCard({ draft }) {
 
           {draft.mediaUrls?.length > 0 && (
             <div className="mt-3 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 max-h-56">
-              <img src={draft.mediaUrls[0]} alt="Bluesky media" className="w-full h-full object-cover" />
+              <MediaPreview url={draft.mediaUrls[0]} pendingFiles={pendingFiles} alt="Bluesky media" className="w-full h-full object-cover" />
             </div>
           )}
 
@@ -192,7 +212,7 @@ function ThreadsPreviewCard({ draft, onSetThreadActiveIndex }) {
 /**
  * Instagram Preview Card
  */
-function InstagramPreviewCard({ draft }) {
+function InstagramPreviewCard({ draft, pendingFiles }) {
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-4 shadow-md text-slate-800 dark:text-slate-100 space-y-3 font-sans">
       <div className="flex items-center justify-between">
@@ -209,7 +229,7 @@ function InstagramPreviewCard({ draft }) {
 
       <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-800">
         {draft.mediaUrls?.[0] ? (
-          <img src={draft.mediaUrls[0]} alt="IG Media" className="w-full h-full object-cover" />
+          <MediaPreview url={draft.mediaUrls[0]} pendingFiles={pendingFiles} alt="IG Media" className="w-full h-full object-cover" />
         ) : (
           <div className="text-slate-400 text-xs font-semibold">Media Preview 📸</div>
         )}
@@ -234,12 +254,12 @@ function InstagramPreviewCard({ draft }) {
 /**
  * YouTube Preview Card
  */
-function YouTubePreviewCard({ draft }) {
+function YouTubePreviewCard({ draft, pendingFiles }) {
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl p-3 shadow-md text-slate-800 dark:text-slate-100 space-y-2 font-sans">
       <div className="w-full h-44 bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center relative">
         {draft.mediaUrls?.[0] ? (
-          <img src={draft.mediaUrls[0]} alt="YT Thumbnail" className="w-full h-full object-cover" />
+          <MediaPreview url={draft.mediaUrls[0]} pendingFiles={pendingFiles} alt="YT Thumbnail" className="w-full h-full object-cover" />
         ) : (
           <div className="text-red-500 text-3xl font-black">▶️</div>
         )}
@@ -265,18 +285,18 @@ function YouTubePreviewCard({ draft }) {
 /**
  * Factory Pattern Registry for Feed Previews
  */
-export function renderPreviewCard(platformId, draft, postFormat, onSetThreadActiveIndex) {
+export function renderPreviewCard(platformId, draft, postFormat, onSetThreadActiveIndex, pendingFiles) {
   switch (platformId) {
     case SOCIAL_PLATFORM.THREADS:
       return <ThreadsPreviewCard draft={draft} onSetThreadActiveIndex={onSetThreadActiveIndex} />
     case SOCIAL_PLATFORM.BLUESKY:
-      return <BlueskyPreviewCard draft={draft} />
+      return <BlueskyPreviewCard draft={draft} pendingFiles={pendingFiles} />
     case SOCIAL_PLATFORM.INSTAGRAM:
-      return <InstagramPreviewCard draft={draft} />
+      return <InstagramPreviewCard draft={draft} pendingFiles={pendingFiles} />
     case SOCIAL_PLATFORM.YOUTUBE:
-      return <YouTubePreviewCard draft={draft} />
+      return <YouTubePreviewCard draft={draft} pendingFiles={pendingFiles} />
     case SOCIAL_PLATFORM.FACEBOOK:
     default:
-      return <FacebookPreviewCard draft={draft} />
+      return <FacebookPreviewCard draft={draft} pendingFiles={pendingFiles} />
   }
 }

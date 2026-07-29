@@ -1,5 +1,11 @@
 import { SOCIAL_PLATFORM } from "@/constants/postComposer"
 
+// postFormat (composer UI) -> PlatformLimit.subType (backend DB) — identical
+// for every value except YOUTUBE's SHORT, which the DB stores as SHORTS
+// (plural). See backend prisma PlatformLimit rows.
+const POST_FORMAT_TO_SUBTYPE = { SHORT: "SHORTS" }
+const toSubType = (postFormat) => POST_FORMAT_TO_SUBTYPE[postFormat] || postFormat
+
 /**
  * Base Strategy Interface
  */
@@ -12,7 +18,7 @@ export class BasePlatformStrategy {
     this.allowedPostTypes = allowedPostTypes
   }
 
-  validate(caption = "", mediaUrls = [], postFormat = "POST") {
+  validate(caption = "", mediaUrls = [], postFormat = "POST", extra = {}) {
     const errors = []
     const charCount = caption.length
     const hashtagCount = (caption.match(/#[^\s#]+/g) || []).length
@@ -40,6 +46,56 @@ export class BasePlatformStrategy {
         severity: "warning",
       })
     }
+
+    errors.push(...this.validateMediaFiles(postFormat, extra))
+
+    return errors
+  }
+
+  /**
+   * Checks each pendingFile (raw File objects, not yet uploaded — see
+   * usePostComposerFacade's pendingFiles) against the real PlatformLimit row
+   * for this platform+postFormat, fetched once via
+   * postService.getPlatformLimits and passed in as extra.platformLimits.
+   * Runs entirely client-side on File.size/File.type — no upload happens
+   * here, so a file can be rejected before ever reaching Cloudinary.
+   */
+  validateMediaFiles(postFormat, extra = {}) {
+    const { pendingFiles = [], platformLimits = [] } = extra
+    if (pendingFiles.length === 0 || platformLimits.length === 0) return []
+
+    const subType = toSubType(postFormat)
+    const limit = platformLimits.find((l) => l.platform === this.platformId && l.subType === subType)
+    if (!limit) return []
+
+    const allowedFormats = limit.allowedFormats.split(",").map((f) => f.trim().toLowerCase())
+    const errors = []
+
+    pendingFiles.forEach((file) => {
+      const sizeMb = file.size / (1024 * 1024)
+      const ext = file.name.split(".").pop()?.toLowerCase()
+
+      if (sizeMb > limit.maxFileSizeMb) {
+        errors.push({
+          id: `${this.platformId}-media-size-${file.name}`,
+          platform: this.platformId,
+          field: "media",
+          targetId: "input-media-dropzone",
+          message: `${this.name}: Tệp "${file.name}" (${sizeMb.toFixed(1)}MB) vượt quá giới hạn ${limit.maxFileSizeMb}MB.`,
+          severity: "error",
+        })
+      }
+      if (ext && !allowedFormats.includes(ext)) {
+        errors.push({
+          id: `${this.platformId}-media-format-${file.name}`,
+          platform: this.platformId,
+          field: "media",
+          targetId: "input-media-dropzone",
+          message: `${this.name}: Định dạng ".${ext}" không được hỗ trợ. Định dạng hợp lệ: ${allowedFormats.join(", ")}.`,
+          severity: "error",
+        })
+      }
+    })
 
     return errors
   }
@@ -71,8 +127,8 @@ export class InstagramStrategy extends BasePlatformStrategy {
     super(SOCIAL_PLATFORM.INSTAGRAM, "Instagram", 2200, 30, ["POST", "REEL", "STORY"])
   }
 
-  validate(caption = "", mediaUrls = [], postFormat = "POST") {
-    const errors = super.validate(caption, mediaUrls, postFormat)
+  validate(caption = "", mediaUrls = [], postFormat = "POST", extra = {}) {
+    const errors = super.validate(caption, mediaUrls, postFormat, extra)
     if (mediaUrls.length === 0) {
       errors.push({
         id: "INSTAGRAM-require-media",
@@ -95,8 +151,9 @@ export class YouTubeStrategy extends BasePlatformStrategy {
     super(SOCIAL_PLATFORM.YOUTUBE, "YouTube", 5000, 15, ["VIDEO", "SHORT"])
   }
 
-  validate(caption = "", mediaUrls = [], postFormat = "VIDEO", youtubeOptions = {}) {
-    const errors = super.validate(caption, mediaUrls, postFormat)
+  validate(caption = "", mediaUrls = [], postFormat = "VIDEO", extra = {}) {
+    const errors = super.validate(caption, mediaUrls, postFormat, extra)
+    const youtubeOptions = extra.youtubeOptions || {}
     if (!youtubeOptions.title && !caption) {
       errors.push({
         id: "YOUTUBE-require-title",
@@ -129,8 +186,8 @@ export class TikTokStrategy extends BasePlatformStrategy {
     super(SOCIAL_PLATFORM.TIKTOK, "TikTok", 2200, 30, ["VIDEO", "POST"])
   }
 
-  validate(caption = "", mediaUrls = [], postFormat = "VIDEO") {
-    const errors = super.validate(caption, mediaUrls, postFormat)
+  validate(caption = "", mediaUrls = [], postFormat = "VIDEO", extra = {}) {
+    const errors = super.validate(caption, mediaUrls, postFormat, extra)
     if (mediaUrls.length === 0) {
       errors.push({
         id: "TIKTOK-require-media",

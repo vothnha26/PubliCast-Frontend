@@ -298,6 +298,21 @@
     "schedule_desc": "Save and schedule post",
     "publish_now_desc": "Publish with current date and time",
     "recurring_desc": "Schedule recurrence or duplicate in other brands",
-    "coming_soon": "Coming soon — not available yet"
+    "coming_soon": "Coming soon — not available yet",
+    "image_upload": "Image upload",
+    "video_upload": "Video upload",
+    "from_computer": "From computer",
+    "from_url": "From URL",
+    "media_library": "Media Library",
+    "drag_drop_hint": "Click to select or drag your file here.",
+    "paste_url_placeholder": "Paste image or video URL here...",
+    "accept": "Accept",
+    "selected_files": "Selected Files ({{count}}):",
+    "supported_formats_image": "Supported formats: JPG, PNG, WEBP, GIF (Max 50MB)",
+    "supported_formats_video": "Supported formats: MP4, MOV, WEBM (Max 500MB)",
+    "media_url_label": "Media URL address:",
+    "live_media_preview": "Live Media Preview:",
+    "search_media_library_placeholder": "Search media library...",
+    "uploading": "Uploading..."
   }
 }

@@ -11,6 +11,7 @@ export default function LivePreviewRegion({
   draft,
   postFormat,
   onSetThreadActiveIndex,
+  pendingFiles,
 }) {
   const [deviceMode, setDeviceMode] = useState("mobile")
 
@@ -75,7 +76,7 @@ export default function LivePreviewRegion({
 
       {/* Main Feed Preview Mockup Container (Spacious Width) */}
       <div className="flex-1 flex items-center justify-center py-4">
-        {renderPreviewCard(activePreviewPlatform, draft, postFormat, onSetThreadActiveIndex)}
+        {renderPreviewCard(activePreviewPlatform, draft, postFormat, onSetThreadActiveIndex, pendingFiles)}
       </div>
 
       {/* Notice Callout Box (Matching Wireframe 100%) */}

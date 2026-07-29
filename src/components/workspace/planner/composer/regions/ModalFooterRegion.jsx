@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Calendar, ChevronDown, ChevronUp, Check, Gem } from "lucide-react"
+import { SCHEDULE_ACTION } from "@/constants/postComposer"
 
 export default function ModalFooterRegion({
   scheduledAt,
@@ -14,7 +15,7 @@ export default function ModalFooterRegion({
   const { t } = useTranslation()
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [showScheduleMenu, setShowScheduleMenu] = useState(false)
-  const [selectedAction, setSelectedAction] = useState("SCHEDULE")
+  const [selectedAction, setSelectedAction] = useState(SCHEDULE_ACTION.SCHEDULE)
 
   const formattedDate = new Date(scheduledAt || Date.now()).toLocaleString("en-US", {
     month: "short",
@@ -30,42 +31,42 @@ export default function ModalFooterRegion({
   // button previously ignored selectedAction entirely).
   const scheduleActions = [
     {
-      id: "DRAFT",
+      id: SCHEDULE_ACTION.DRAFT,
       title: t("composer.save_draft"),
       subtitle: t("composer.save_draft_desc"),
       isPremium: false,
       isAvailable: true,
     },
     {
-      id: "SCHEDULE",
+      id: SCHEDULE_ACTION.SCHEDULE,
       title: t("composer.schedule_desc"),
       subtitle: t("composer.schedule_desc"),
       isPremium: false,
       isAvailable: true,
     },
     {
-      id: "LIBRARY",
+      id: SCHEDULE_ACTION.LIBRARY,
       title: t("composer.save_to_library"),
       subtitle: t("composer.save_library_desc"),
       isPremium: true,
       isAvailable: false,
     },
     {
-      id: "REVIEW",
+      id: SCHEDULE_ACTION.REVIEW,
       title: t("composer.send_for_review"),
       subtitle: t("composer.send_review_desc"),
       isPremium: true,
       isAvailable: false,
     },
     {
-      id: "PUBLISH_NOW",
+      id: SCHEDULE_ACTION.PUBLISH_NOW,
       title: t("composer.publish_now"),
       subtitle: t("composer.publish_now_desc"),
       isPremium: false,
       isAvailable: false,
     },
     {
-      id: "RECURRING",
+      id: SCHEDULE_ACTION.RECURRING,
       title: t("composer.recurring_schedule"),
       subtitle: t("composer.recurring_desc"),
       isPremium: true,
@@ -75,9 +76,9 @@ export default function ModalFooterRegion({
 
   const getButtonLabel = () => {
     switch (selectedAction) {
-      case "DRAFT":
+      case SCHEDULE_ACTION.DRAFT:
         return t("composer.save_draft")
-      case "SCHEDULE":
+      case SCHEDULE_ACTION.SCHEDULE:
       default:
         return t("composer.schedule_count", { count: postsCount })
     }
@@ -132,7 +133,7 @@ export default function ModalFooterRegion({
               type="button"
               id="btn-composer-submit"
               disabled={isSubmitting || hasBlockingErrors}
-              onClick={() => onSubmit(selectedAction === "DRAFT")}
+              onClick={() => onSubmit(selectedAction === SCHEDULE_ACTION.DRAFT)}
               className={`px-5 py-2.5 font-black text-xs tracking-wide transition-all cursor-pointer ${
                 hasBlockingErrors
                   ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed"

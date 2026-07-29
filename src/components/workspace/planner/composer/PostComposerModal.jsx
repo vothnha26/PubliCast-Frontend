@@ -25,6 +25,9 @@ export default function PostComposerModal({
     draft,
     updateDraft,
     updateYoutubeOption,
+    addPendingFiles,
+    removePendingFile,
+    pendingFiles,
     updatePreset,
     updateNetworkCaption,
     isEditByNetwork,
@@ -107,6 +110,9 @@ export default function PostComposerModal({
                 onChangeCaption={(val) => updateDraft("caption", val)}
                 mediaUrls={draft.mediaUrls}
                 onMediaChange={(newUrls) => updateDraft("mediaUrls", newUrls)}
+                onAddPendingFiles={addPendingFiles}
+                onRemovePendingFile={removePendingFile}
+                pendingFiles={pendingFiles}
                 maxCharacters={300}
                 maxHashtags={30}
                 // Edit by network props
@@ -166,6 +172,7 @@ export default function PostComposerModal({
               draft={draft}
               postFormat={postFormat}
               onSetThreadActiveIndex={setThreadActiveIndex}
+              pendingFiles={pendingFiles}
             />
           )}
         </div>

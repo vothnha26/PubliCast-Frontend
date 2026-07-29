@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState } from "react"
 import { useTranslation } from "react-i18next"
 import {
   Image as ImageIcon,
@@ -16,12 +16,16 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { NETWORK_TAB_TEMPLATE, SOCIAL_PLATFORM } from "@/constants/postComposer"
+import MediaUploadModal from "../MediaUploadModal"
 
 export default function ContentComposerRegion({
   caption = "",
   onChangeCaption,
   mediaUrls = [],
   onMediaChange,
+  onAddPendingFiles,
+  onRemovePendingFile,
+  pendingFiles,
   maxCharacters = 300,
   maxHashtags = 30,
   // Edit by Network props
@@ -40,8 +44,10 @@ export default function ContentComposerRegion({
   const { t } = useTranslation()
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showMediaMenu, setShowMediaMenu] = useState(false)
-  const imageInputRef = useRef(null)
-  const videoInputRef = useRef(null)
+
+  // Media Upload Modal State
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false)
+  const [mediaModalType, setMediaModalType] = useState("image") // "image" | "video"
 
   // Current tab network config
   const isTemplateTab = activeNetworkTab === NETWORK_TAB_TEMPLATE
@@ -71,17 +77,41 @@ export default function ContentComposerRegion({
     }
   }
 
-  const handleLocalFileUpload = (e) => {
-    const files = Array.from(e.target.files || [])
+  // Files picked here are NOT uploaded yet — only kept as local blob: URLs
+  // for preview (addPendingFiles) plus the raw File for later. Real upload
+  // to Cloudinary only happens in usePostComposerFacade's handleSubmit, so a
+  // file that fails PlatformLimit (checked client-side by
+  // PlatformStrategies' validateMediaFiles against pendingFiles) blocks
+  // Submit via the normal validation-error path instead of ever reaching
+  // the network.
+  const handleUploadFiles = (files) => {
     if (files.length === 0) return
-    const newMediaUrls = files.map((file) => URL.createObjectURL(file))
-    onMediaChange([...mediaUrls, ...newMediaUrls])
     setShowMediaMenu(false)
+    if (onAddPendingFiles) onAddPendingFiles(files)
+  }
+
+  // URL / library items are already-hosted media (not raw Files to upload),
+  // so they go straight into mediaUrls — no pendingFiles entry, no
+  // PlatformLimit pre-check (nothing to validate before submit; the backend
+  // still checks size/format for real uploads only, not arbitrary URLs).
+  const handleAddMediaUrl = (url) => {
+    if (url) {
+      onMediaChange([...mediaUrls, url])
+    }
+  }
+
+  const handleAddLibraryUrls = (urls) => {
+    if (urls && urls.length > 0) {
+      onMediaChange([...mediaUrls, ...urls])
+    }
   }
 
   const handleRemoveMedia = (index) => {
-    const updated = mediaUrls.filter((_, i) => i !== index)
-    onMediaChange(updated)
+    if (onRemovePendingFile) {
+      onRemovePendingFile(index)
+    } else {
+      onMediaChange(mediaUrls.filter((_, i) => i !== index))
+    }
   }
 
   const handleAddEmoji = (emoji) => {
@@ -91,24 +121,34 @@ export default function ContentComposerRegion({
 
   const charCount = activeCaption.length
 
+  // blob: URLs carry no filename/extension of their own (URL.createObjectURL
+  // strips it), so a pending file's real type must come from the File object
+  // itself (pendingFiles, keyed by blob URL — see usePostComposerFacade's
+  // addPendingFiles). Once uploaded, mediaUrls holds the real Cloudinary URL
+  // instead, which does have a real extension to check.
+  const isVideoUrl = (url) => {
+    const pendingType = pendingFiles?.get(url)?.type
+    if (pendingType) return pendingType.startsWith("video/")
+    return /\.(mp4|mov|webm|avi|mkv)(\?|$)/i.test(url)
+  }
+
+  const openMediaModal = (type = "image") => {
+    setMediaModalType(type)
+    setIsMediaModalOpen(true)
+    setShowMediaMenu(false)
+  }
+
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-3xl p-5 shadow-xs relative transition-all font-sans">
       
-      {/* Hidden File Inputs for Local Image/Video Upload */}
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={handleLocalFileUpload}
-      />
-      <input
-        ref={videoInputRef}
-        type="file"
-        accept="video/*"
-        className="hidden"
-        onChange={handleLocalFileUpload}
+      {/* Interactive Media Upload Modal */}
+      <MediaUploadModal
+        isOpen={isMediaModalOpen}
+        onClose={() => setIsMediaModalOpen(false)}
+        mediaType={mediaModalType}
+        onAcceptFiles={handleUploadFiles}
+        onAcceptUrl={handleAddMediaUrl}
+        onAcceptLibraryItems={handleAddLibraryUrls}
       />
 
       {/* TOP HEADER: NETWORK TABS (ONLY WHEN EDIT BY NETWORK IS ON) */}
@@ -243,7 +283,11 @@ export default function ContentComposerRegion({
             <div id="input-media-dropzone" className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
               {mediaUrls.map((url, idx) => (
                 <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 shrink-0 group shadow-xs">
-                  <img src={url} alt={`Media ${idx}`} className="w-full h-full object-cover" />
+                  {isVideoUrl(url) ? (
+                    <video src={url} className="w-full h-full object-cover" muted />
+                  ) : (
+                    <img src={url} alt={`Media ${idx}`} className="w-full h-full object-cover" />
+                  )}
                   <button
                     type="button"
                     onClick={() => handleRemoveMedia(idx)}
@@ -282,12 +326,12 @@ export default function ContentComposerRegion({
                   </div>
                 </button>
 
-                {/* High-Fidelity Media Menu (100% i18n Translated via useTranslation) */}
+                {/* High-Fidelity Media Menu */}
                 {showMediaMenu && (
                   <div className="absolute left-0 bottom-full mb-2 w-60 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl shadow-xl p-2 z-50 animate-scale-in text-xs font-semibold space-y-1">
                     <button
                       type="button"
-                      onClick={() => imageInputRef.current?.click()}
+                      onClick={() => openMediaModal("image")}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors text-left cursor-pointer"
                     >
                       <ImageIcon className="h-4 w-4 text-slate-700 dark:text-slate-300" />
@@ -296,7 +340,7 @@ export default function ContentComposerRegion({
 
                     <button
                       type="button"
-                      onClick={() => videoInputRef.current?.click()}
+                      onClick={() => openMediaModal("video")}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors text-left cursor-pointer"
                     >
                       <VideoIcon className="h-4 w-4 text-slate-700 dark:text-slate-300" />
@@ -345,7 +389,7 @@ export default function ContentComposerRegion({
 
                     <button
                       type="button"
-                      onClick={() => setShowMediaMenu(false)}
+                      onClick={() => openMediaModal("image")}
                       className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors text-left cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
@@ -357,7 +401,7 @@ export default function ContentComposerRegion({
 
                     <button
                       type="button"
-                      onClick={() => setShowMediaMenu(false)}
+                      onClick={() => openMediaModal("video")}
                       className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors text-left cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
@@ -369,7 +413,7 @@ export default function ContentComposerRegion({
 
                     <button
                       type="button"
-                      onClick={() => setShowMediaMenu(false)}
+                      onClick={() => openMediaModal("image")}
                       className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 transition-colors text-left cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
@@ -458,6 +502,7 @@ export default function ContentComposerRegion({
               {/* Media Library Asset Picker */}
               <button
                 type="button"
+                onClick={() => openMediaModal("image")}
                 className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-indigo-600 transition-all cursor-pointer"
                 title="Kho thư viện phương tiện"
               >
