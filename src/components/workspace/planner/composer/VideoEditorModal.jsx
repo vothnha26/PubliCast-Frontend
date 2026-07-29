@@ -321,8 +321,12 @@ export default function VideoEditorModal({
   const [frameThumbnails, setFrameThumbnails] = useState([])
   const [showZoomMenu, setShowZoomMenu] = useState(false)
   const timelineRef = useRef(null)
+  const isDraggingPlayhead = useRef(false)
   const isDraggingStartHandle = useRef(false)
   const isDraggingEndHandle = useRef(false)
+  const isDraggingRangeBox = useRef(false)
+  const dragRangeStartOffsetSec = useRef(0)
+  const dragRangeWindowSec = useRef(0)
 
   // Generate 16 filmstrip frame thumbnails from video
   useEffect(() => {
@@ -387,26 +391,44 @@ export default function VideoEditorModal({
     }
   }, [sampleVideo, duration])
 
-  // Drag handles event listener for trimming
+  // Drag handles & range box event listeners for trimming
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!timelineRef.current || duration <= 0) return
-      if (!isDraggingStartHandle.current && !isDraggingEndHandle.current) return
+      if (
+        !isDraggingPlayhead.current &&
+        !isDraggingStartHandle.current &&
+        !isDraggingEndHandle.current &&
+        !isDraggingRangeBox.current
+      )
+        return
 
       const rect = timelineRef.current.getBoundingClientRect()
       const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
       const targetSec = pct * duration
 
-      if (isDraggingStartHandle.current) {
+      if (isDraggingPlayhead.current) {
+        if (videoRef.current) {
+          videoRef.current.currentTime = targetSec
+        }
+      } else if (isDraggingStartHandle.current) {
         setStartTime(Math.min(targetSec, endTime - 0.5))
       } else if (isDraggingEndHandle.current) {
         setEndTime(Math.max(targetSec, startTime + 0.5))
+      } else if (isDraggingRangeBox.current) {
+        const win = dragRangeWindowSec.current
+        const newStart = Math.max(0, Math.min(duration - win, targetSec - dragRangeStartOffsetSec.current))
+        const newEnd = Math.min(duration, newStart + win)
+        setStartTime(newStart)
+        setEndTime(newEnd)
       }
     }
 
     const handleMouseUp = () => {
+      isDraggingPlayhead.current = false
       isDraggingStartHandle.current = false
       isDraggingEndHandle.current = false
+      isDraggingRangeBox.current = false
     }
 
     window.addEventListener("mousemove", handleMouseMove)
@@ -765,12 +787,16 @@ export default function VideoEditorModal({
                 {/* Current Playhead Pin badge & vertical line */}
                 {duration > 0 && (
                   <div
-                    className="absolute top-0 flex flex-col items-center -translate-x-1/2 cursor-pointer z-30 transition-none"
+                    className="absolute top-0 flex flex-col items-center -translate-x-1/2 cursor-grab active:cursor-grabbing z-30 transition-none group/pin"
                     style={{
                       left: `${Math.max(0, Math.min(100, (videoRef.current ? videoRef.current.currentTime / duration : 0) * 100))}%`,
                     }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation()
+                      isDraggingPlayhead.current = true
+                    }}
                   >
-                    <div className="bg-black text-white text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded-md shadow-md border border-slate-800 whitespace-nowrap">
+                    <div className="bg-black text-white text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded-md shadow-md border border-slate-800 whitespace-nowrap group-hover/pin:scale-110 transition-transform">
                       {formatTime(videoRef.current ? videoRef.current.currentTime : 0)}
                     </div>
                     <div className="w-0.5 h-12 bg-black dark:bg-white shadow-sm pointer-events-none" />
@@ -826,6 +852,29 @@ export default function VideoEditorModal({
                   className="absolute top-0 bottom-0 right-0 bg-black/60 backdrop-blur-[1px] pointer-events-none z-10"
                   style={{ width: `${100 - (endTime / duration) * 100}%` }}
                 />
+
+                {/* Draggable Active Time Range Window Box */}
+                <div
+                  className="absolute top-0 bottom-0 border-t-2 border-b-2 border-amber-400/90 z-15 cursor-grab active:cursor-grabbing group/range flex items-center justify-center bg-amber-400/10 hover:bg-amber-400/20 transition-colors"
+                  style={{
+                    left: `${(startTime / duration) * 100}%`,
+                    width: `${((endTime - startTime) / duration) * 100}%`,
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation()
+                    if (!timelineRef.current || duration <= 0) return
+                    const rect = timelineRef.current.getBoundingClientRect()
+                    const clickPct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+                    const clickSec = clickPct * duration
+                    dragRangeStartOffsetSec.current = clickSec - startTime
+                    dragRangeWindowSec.current = endTime - startTime
+                    isDraggingRangeBox.current = true
+                  }}
+                >
+                  <div className="text-[9px] font-mono font-black text-amber-300 bg-black/80 px-2 py-0.5 rounded-full backdrop-blur-xs opacity-0 group-hover/range:opacity-100 transition-opacity pointer-events-none shadow-md">
+                    Kéo khoảng: {formatTime(endTime - startTime)}
+                  </div>
+                </div>
 
                 {/* Left Gold Trim Handle */}
                 <div
