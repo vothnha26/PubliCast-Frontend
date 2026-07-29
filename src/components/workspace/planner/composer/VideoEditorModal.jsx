@@ -241,6 +241,7 @@ export default function VideoEditorModal({
             ? { width: Number(customWidth), height: Number(customHeight) }
             : undefined,
         saveAudio,
+        keepAudio: saveAudio,
         audioVolume: saveAudio ? 100 : 0,
         brandId,
       }
