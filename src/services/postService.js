@@ -34,4 +34,14 @@ export const postService = {
     })
     return res.data.data // Unwrap { message, data } envelope in one place
   },
+
+  async trimVideo(payload) {
+    const res = await api.post(POST_ENDPOINTS.TRIM_VIDEO, payload)
+    return res.data
+  },
+
+  async getTrimStatus(taskId) {
+    const res = await api.get(POST_ENDPOINTS.TRIM_STATUS(taskId))
+    return res.data
+  },
 }

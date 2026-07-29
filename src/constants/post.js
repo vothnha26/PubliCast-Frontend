@@ -12,6 +12,8 @@ export const POST_ENDPOINTS = Object.freeze({
   PLATFORM_LIMITS: "/v2/posts/platform-limits",
   UPLOAD: "/v2/posts/upload",
   CREATE_V2: "/v2/posts",
+  TRIM_VIDEO: "/posts/trim",
+  TRIM_STATUS: (taskId) => `/posts/trim/${taskId}/status`,
 })
 
 // POST /v2/posts/upload contract (backend/src/routes/workspace/post.routes.v2.js +
