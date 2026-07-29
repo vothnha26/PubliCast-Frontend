@@ -96,13 +96,13 @@ function loadImageElement(src) {
 // be re-run whenever blurRadius (or the crop/position) changes, otherwise
 // the node keeps showing a stale cached bitmap. useEffect with blurRadius in
 // the deps is what keeps the slider live instead of frozen at mount time.
-function CensureBlurBox({ image, x, y, width, height, crop, blurRadius, dragProps }) {
+function CensureBlurBox({ image, x, y, width, height, crop, blurRadius, rotation = 0, scaleX = 1, scaleY = 1, offsetX = 0, offsetY = 0, dragProps }) {
   const nodeRef = useRef(null)
 
   useEffect(() => {
     nodeRef.current?.cache()
     nodeRef.current?.getLayer()?.batchDraw()
-  }, [blurRadius, x, y, width, height, crop.x, crop.y, crop.width, crop.height])
+  }, [blurRadius, x, y, width, height, crop.x, crop.y, crop.width, crop.height, rotation, scaleX, scaleY])
 
   return (
     <KonvaImage
@@ -113,6 +113,11 @@ function CensureBlurBox({ image, x, y, width, height, crop, blurRadius, dragProp
       y={y}
       width={width}
       height={height}
+      offsetX={offsetX}
+      offsetY={offsetY}
+      rotation={rotation}
+      scaleX={scaleX}
+      scaleY={scaleY}
       crop={crop}
       filters={[Konva.Filters.Blur]}
       blurRadius={blurRadius}
@@ -126,47 +131,74 @@ function CensureBlurBox({ image, x, y, width, height, crop, blurRadius, dragProp
 // attached plus setting their numeric params — this is what actually gets
 // rasterized into the exported image, unlike the mockup's decorative-only
 // Tailwind filter classes.
-function applyFilterToNode(node, filterId) {
+function applyFilterToNode(node, filterId, brightness = 100, contrast = 100, saturation = 100) {
   if (!node) return
-  node.cache()
+
+  const filters = []
+  
+  let presetContrast = 0
+  let presetBrightness = 0
+  let presetHue = 0
+  let presetSat = 0
+  let isGrayscale = false
+  let isSepia = false
+  let isNoise = false
+  let noiseVal = 0
+
   switch (filterId) {
     case "grayscale":
-      node.filters([Konva.Filters.Grayscale])
+      isGrayscale = true
       break
     case "vintage":
-      node.filters([Konva.Filters.Sepia, Konva.Filters.Contrast])
-      node.contrast(10)
+      isSepia = true
+      presetContrast = 10
       break
     case "warm":
-      node.filters([Konva.Filters.RGB])
-      node.red(node.image() ? undefined : undefined)
-      node.filters([Konva.Filters.HSL])
-      node.hue(20)
-      node.saturation(0.15)
+      presetHue = 20
+      presetSat = 0.15
       break
     case "cold":
-      node.filters([Konva.Filters.HSL])
-      node.hue(-20)
-      node.saturation(0.1)
+      presetHue = -20
+      presetSat = 0.1
       break
     case "film":
-      node.filters([Konva.Filters.Contrast, Konva.Filters.Noise])
-      node.contrast(15)
-      node.noise(0.15)
+      presetContrast = 15
+      isNoise = true
+      noiseVal = 0.15
       break
     case "bright":
-      node.filters([Konva.Filters.Brighten])
-      node.brightness(0.15)
+      presetBrightness = 0.15
       break
     case "highcontrast":
-      node.filters([Konva.Filters.Contrast])
-      node.contrast(40)
+      presetContrast = 40
       break
     case "none":
     default:
-      node.filters([])
       break
   }
+
+  const bVal = presetBrightness + (brightness - 100) / 100
+  const cVal = presetContrast + (contrast - 100)
+  const sVal = presetSat + (saturation - 100) / 100
+
+  if (isGrayscale) filters.push(Konva.Filters.Grayscale)
+  if (isSepia) filters.push(Konva.Filters.Sepia)
+  if (bVal !== 0) filters.push(Konva.Filters.Brighten)
+  if (cVal !== 0) filters.push(Konva.Filters.Contrast)
+  if (presetHue !== 0 || sVal !== 0) filters.push(Konva.Filters.HSL)
+  if (isNoise) filters.push(Konva.Filters.Noise)
+
+  node.filters(filters)
+
+  if (bVal !== 0) node.brightness(bVal)
+  if (cVal !== 0) node.contrast(cVal)
+  if (presetHue !== 0 || sVal !== 0) {
+    node.hue(presetHue)
+    node.saturation(sVal)
+  }
+  if (isNoise) node.noise(noiseVal)
+
+  node.cache()
   node.getLayer()?.batchDraw()
 }
 
@@ -254,16 +286,9 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
 
   useEffect(() => {
     if (imageNodeRef.current) {
-      applyFilterToNode(imageNodeRef.current, selectedFilter)
+      applyFilterToNode(imageNodeRef.current, selectedFilter, brightness, contrast, saturation)
     }
-  }, [selectedFilter, imgEl])
-
-  useEffect(() => {
-    if (!imageNodeRef.current) return
-    const node = imageNodeRef.current
-    node.cache()
-    node.getLayer()?.batchDraw()
-  }, [brightness, contrast, saturation])
+  }, [selectedFilter, brightness, contrast, saturation, imgEl])
 
   useEffect(() => {
     if (trRef.current && selectedId) {
@@ -580,7 +605,7 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
               <div className="w-10 h-10 border-4 border-gray-200 border-t-black rounded-full animate-spin" />
             ) : (
               <div
-                style={{ ...previewFilterStyle, transform: `scale(${zoomPercent / 100})`, transformOrigin: "center center" }}
+                style={{ transform: `scale(${zoomPercent / 100})`, transformOrigin: "center center" }}
                 className="rounded-lg overflow-hidden shrink-0 transition-transform"
               >
                 <Stage
@@ -721,23 +746,53 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
 
                       if (c.mode === "blur" && imgEl && imgAttrs.width > 0) {
                         // Map the box's Stage coordinates back to the source
-                        // image's own pixel space (imgAttrs describes where/
-                        // how big the image is drawn on the Stage) so the
-                        // cropped copy shows the same content that sits
-                        // underneath it.
-                        const scaleX = imgEl.naturalWidth / imgAttrs.width
-                        const scaleY = imgEl.naturalHeight / imgAttrs.height
-                        const cropX = (boxX - imgAttrs.x) * scaleX
-                        const cropY = (boxY - imgAttrs.y) * scaleY
+                        // image's own pixel space taking into account rotation and scaling.
+                        const centerX = imgAttrs.x + imgAttrs.width / 2
+                        const centerY = imgAttrs.y + imgAttrs.height / 2
+
+                        const boxCenterX = boxX + boxW / 2
+                        const boxCenterY = boxY + boxH / 2
+
+                        const dx = boxCenterX - centerX
+                        const dy = boxCenterY - centerY
+
+                        const rad = (-imgAttrs.rotation * Math.PI) / 180
+                        const unrotX = dx * Math.cos(rad) - dy * Math.sin(rad)
+                        const unrotY = dx * Math.sin(rad) + dy * Math.cos(rad)
+
+                        const unflipX = unrotX / (imgAttrs.scaleX || 1)
+                        const unflipY = unrotY / (imgAttrs.scaleY || 1)
+
+                        const stageImgX = unflipX + imgAttrs.width / 2
+                        const stageImgY = unflipY + imgAttrs.height / 2
+
+                        const scaleRatioX = imgEl.naturalWidth / imgAttrs.width
+                        const scaleRatioY = imgEl.naturalHeight / imgAttrs.height
+
+                        const natCenterX = stageImgX * scaleRatioX
+                        const natCenterY = stageImgY * scaleRatioY
+
+                        const isRotated90 = Math.abs(imgAttrs.rotation % 180) === 90
+                        const cropW = (isRotated90 ? boxH : boxW) * scaleRatioX
+                        const cropH = (isRotated90 ? boxW : boxH) * scaleRatioY
+
+                        const cropX = Math.max(0, Math.min(imgEl.naturalWidth - cropW, natCenterX - cropW / 2))
+                        const cropY = Math.max(0, Math.min(imgEl.naturalHeight - cropH, natCenterY - cropH / 2))
+
                         return (
                           <CensureBlurBox
                             key={c.id}
                             image={imgEl}
-                            x={boxX}
-                            y={boxY}
+                            x={boxCenterX}
+                            y={boxCenterY}
                             width={boxW}
                             height={boxH}
-                            crop={{ x: cropX, y: cropY, width: boxW * scaleX, height: boxH * scaleY }}
+                            offsetX={boxW / 2}
+                            offsetY={boxH / 2}
+                            rotation={imgAttrs.rotation}
+                            scaleX={imgAttrs.scaleX}
+                            scaleY={imgAttrs.scaleY}
+                            crop={{ x: cropX, y: cropY, width: cropW, height: cropH }}
                             blurRadius={c.blurAmount ?? 25}
                             dragProps={dragProps}
                           />

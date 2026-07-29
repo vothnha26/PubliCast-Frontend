@@ -121,7 +121,23 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
 
   // Update draft helper
   const updateDraft = useCallback((field, value) => {
-    setDraft((prev) => ({ ...prev, [field]: value }))
+    setDraft((prev) => {
+      const nextDraft = { ...prev, [field]: value }
+      if (field === "caption") {
+        const threads = prev.networkCustom.THREADS || { useTemplate: false, threadPosts: [""] }
+        const firstPost = threads.threadPosts?.[0] || ""
+        if (firstPost === "" || firstPost === prev.caption) {
+          nextDraft.networkCustom = {
+            ...prev.networkCustom,
+            THREADS: {
+              ...threads,
+              threadPosts: [value, ...(threads.threadPosts?.slice(1) || [])],
+            },
+          }
+        }
+      }
+      return nextDraft
+    })
   }, [])
 
   const updateYoutubeOption = useCallback((field, value) => {
@@ -255,14 +271,22 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
       const currentNet = prev.networkCustom[platformId] || { useTemplate: true, caption: "", mediaUrls: [] }
       const newUseTemplate = value !== undefined ? value : !currentNet.useTemplate
 
-      // Turning template off for the first time: carry over the shared
-      // caption/mediaUrls as the starting point to edit, instead of an empty
-      // box the user would have to retype/reselect from scratch. Only seeds
-      // when this platform has no custom content yet, so re-toggling later
-      // never clobbers what the user already typed here.
-      const isFirstCustomization = newUseTemplate === false && !currentNet.caption && currentNet.mediaUrls.length === 0
+      const isThreads = platformId === SOCIAL_PLATFORM.THREADS
+      const isFirstCustomization = newUseTemplate === false &&
+        (isThreads
+          ? (!currentNet.threadPosts || currentNet.threadPosts[0] === "")
+          : !currentNet.caption) &&
+        (currentNet.mediaUrls?.length || 0) === 0
+
       const seededNet = isFirstCustomization
-        ? { ...currentNet, caption: prev.caption, mediaUrls: [...prev.mediaUrls] }
+        ? isThreads
+          ? {
+              ...currentNet,
+              caption: prev.caption,
+              threadPosts: [prev.caption, ...(currentNet.threadPosts?.slice(1) || [])],
+              mediaUrls: [...prev.mediaUrls],
+            }
+          : { ...currentNet, caption: prev.caption, mediaUrls: [...prev.mediaUrls] }
         : currentNet
 
       return {
@@ -375,11 +399,27 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
   const applyTemplate = useCallback((templateId) => {
     const tpl = POST_TEMPLATES.find((t) => t.id === templateId)
     if (!tpl) return
-    setDraft((prev) => ({
-      ...prev,
-      caption: tpl.caption,
-      title: tpl.title,
-    }))
+    setDraft((prev) => {
+      const threads = prev.networkCustom.THREADS || { useTemplate: false, threadPosts: [""] }
+      const firstPost = threads.threadPosts?.[0] || ""
+      const shouldSeedThreads = firstPost === "" || firstPost === prev.caption
+      return {
+        ...prev,
+        caption: tpl.caption,
+        title: tpl.title,
+        ...(shouldSeedThreads
+          ? {
+              networkCustom: {
+                ...prev.networkCustom,
+                THREADS: {
+                  ...threads,
+                  threadPosts: [tpl.caption, ...(threads.threadPosts?.slice(1) || [])],
+                },
+              },
+            }
+          : {}),
+      }
+    })
     setSelectedPlatforms(tpl.platforms)
     setPostFormat(tpl.format)
     setActivePreviewPlatform(tpl.platforms[0] || "INSTAGRAM")
@@ -468,7 +508,17 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
               mediaUrls: (netCustom.mediaUrls || []).map((url) => resolved.get(url) ?? url),
             }))
             if (!threadPosts.some((p) => p.text)) return null
-            return { platform: pId, useTemplate: false, threadPosts }
+
+            const mainCaption = threadPosts[0]?.text || netCustom.caption || ""
+            const overrideMediaUrls = (netCustom.mediaUrls || []).map((url) => resolved.get(url) ?? url)
+
+            return {
+              platform: pId,
+              useTemplate: false,
+              caption: mainCaption,
+              mediaUrls: overrideMediaUrls,
+              threadPosts,
+            }
           }
 
           const overrideMediaUrls = (netCustom.mediaUrls || []).map((url) => resolved.get(url) ?? url)
