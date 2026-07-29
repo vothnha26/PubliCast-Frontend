@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
 import {
   Crop as CropIcon,
@@ -88,6 +88,7 @@ export default function VideoEditorModal({
   // RESIZE tool states
   const [customWidth, setCustomWidth] = useState(576)
   const [customHeight, setCustomHeight] = useState(1024)
+  const [isResizeDirty, setIsResizeDirty] = useState(false)
   const [isAspectLocked, setIsAspectLocked] = useState(true)
 
   // Zoom
@@ -98,14 +99,97 @@ export default function VideoEditorModal({
   const [processingStatus, setProcessingStatus] = useState("")
   const [errorMessage, setErrorMessage] = useState(null)
 
+  // Ref tracking for cleanup and polling safety
+  const pollIntervalRef = useRef(null)
+  const isMountedRef = useRef(true)
+  const pollCountRef = useRef(0)
+
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current)
+      pollIntervalRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      stopPolling()
+    }
+  }, [stopPolling])
+
   useEffect(() => {
     if (isOpen) {
       setIsProcessing(false)
       setErrorMessage(null)
       setStartTime(0)
       setEndTime(10)
+      setIsResizeDirty(false)
+    } else {
+      stopPolling()
     }
-  }, [isOpen])
+  }, [isOpen, stopPolling])
+
+  const startPolling = useCallback(
+    (taskId) => {
+      stopPolling()
+      pollCountRef.current = 0
+      setIsProcessing(true)
+
+      pollIntervalRef.current = setInterval(async () => {
+        if (!isMountedRef.current) {
+          stopPolling()
+          return
+        }
+
+        pollCountRef.current += 1
+        // Max polling attempts: 120 * 1.5s = 180s (3 minutes)
+        if (pollCountRef.current > 120) {
+          stopPolling()
+          if (isMountedRef.current) {
+            setIsProcessing(false)
+            setErrorMessage("Thời gian xử lý video quá lâu (Timeout 3 phút). Vui lòng thử lại sau.")
+          }
+          return
+        }
+
+        try {
+          const statusRes = await postService.getTrimStatus(taskId)
+          console.log(`[VideoEditorModal] Poll status (${pollCountRef.current}/120) for ${taskId}:`, statusRes)
+
+          if (!isMountedRef.current) {
+            stopPolling()
+            return
+          }
+
+          if (statusRes.status === "SUCCESS") {
+            stopPolling()
+            setIsProcessing(false)
+            if (onSave && statusRes.videoUrl) {
+              onSave(statusRes.videoUrl)
+            }
+            onClose()
+          } else if (statusRes.status === "FAILED") {
+            stopPolling()
+            setIsProcessing(false)
+            setErrorMessage(statusRes.error || "Xử lý video thất bại trong tiến trình FFmpeg.")
+          }
+        } catch (pollErr) {
+          console.error("[VideoEditorModal] Error polling status:", pollErr)
+          const statusCode = pollErr?.response?.status
+          if (statusCode === 404) {
+            stopPolling()
+            if (isMountedRef.current) {
+              setIsProcessing(false)
+              setErrorMessage("Không tìm thấy tiến trình xử lý video hoặc công việc đã bị hủy/hết hạn.")
+            }
+          }
+        }
+      }, 1500)
+    },
+    [onClose, onSave, stopPolling]
+  )
 
   if (!isOpen) return null
 
@@ -139,6 +223,8 @@ export default function VideoEditorModal({
       const selectedPresetObj = FILTER_PRESETS.find((f) => f.id === selectedFilter)
       const filterPreset = selectedPresetObj ? selectedPresetObj.backendPreset : "none"
 
+      const isResizeActive = isResizeDirty || activeTool === "RESIZE"
+
       const payload = {
         videoUrl,
         startTime: Number(startTime) || 0,
@@ -150,7 +236,12 @@ export default function VideoEditorModal({
           saturation: Number(finetuneValues.Saturation) || 0,
         },
         filterPreset,
-        resize: activeTool === "RESIZE" ? { width: Number(customWidth), height: Number(customHeight) } : undefined,
+        resize:
+          isResizeActive && Number(customWidth) > 0 && Number(customHeight) > 0
+            ? { width: Number(customWidth), height: Number(customHeight) }
+            : undefined,
+        saveAudio,
+        audioVolume: saveAudio ? 100 : 0,
         brandId,
       }
 
@@ -168,31 +259,16 @@ export default function VideoEditorModal({
       }
 
       setProcessingStatus("Đang áp dụng bộ lọc và render video qua FFmpeg...")
-
-      // Polling task status every 1.5 seconds
-      const pollInterval = setInterval(async () => {
-        try {
-          const statusRes = await postService.getTrimStatus(taskId)
-          console.log(`[VideoEditorModal] Poll status for ${taskId}:`, statusRes)
-
-          if (statusRes.status === "SUCCESS") {
-            clearInterval(pollInterval)
-            setIsProcessing(false)
-            if (onSave && statusRes.videoUrl) {
-              onSave(statusRes.videoUrl)
-            }
-            onClose()
-          } else if (statusRes.status === "FAILED") {
-            clearInterval(pollInterval)
-            setIsProcessing(false)
-            setErrorMessage(statusRes.error || "Xử lý video thất bại trong tiến trình FFmpeg.")
-          }
-        } catch (pollErr) {
-          console.error("[VideoEditorModal] Error polling status:", pollErr)
-        }
-      }, 1500)
+      startPolling(taskId)
     } catch (err) {
       console.error("[VideoEditorModal] Error initiating video trim:", err)
+      const existingTaskId = err?.response?.data?.taskId
+      if (err?.response?.status === 429 && existingTaskId) {
+        setProcessingStatus("Đang tiếp tục theo dõi tiến trình xử lý video sẵn có...")
+        startPolling(existingTaskId)
+        return
+      }
+
       setIsProcessing(false)
       setErrorMessage(err?.response?.data?.message || err.message || "Đã xảy ra lỗi khi kết nối với máy chủ.")
     }
@@ -693,7 +769,10 @@ export default function VideoEditorModal({
                     <input
                       type="number"
                       value={customWidth}
-                      onChange={(e) => setCustomWidth(Number(e.target.value))}
+                      onChange={(e) => {
+                        setCustomWidth(Number(e.target.value))
+                        setIsResizeDirty(true)
+                      }}
                       className="w-20 px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-center font-mono"
                     />
                     <span>px</span>
@@ -704,7 +783,10 @@ export default function VideoEditorModal({
                     <input
                       type="number"
                       value={customHeight}
-                      onChange={(e) => setCustomHeight(Number(e.target.value))}
+                      onChange={(e) => {
+                        setCustomHeight(Number(e.target.value))
+                        setIsResizeDirty(true)
+                      }}
                       className="w-20 px-2 py-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-center font-mono"
                     />
                     <span>px</span>
