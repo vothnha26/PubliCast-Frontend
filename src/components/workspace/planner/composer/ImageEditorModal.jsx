@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { useTranslation } from "react-i18next"
-import { Stage, Layer, Image as KonvaImage, Rect, Transformer, Text as KonvaText, Line, Arrow, Ellipse, Group } from "react-konva"
+import { Stage, Layer, Image as KonvaImage, Rect, Transformer, Text as KonvaText, Line, Arrow, Ellipse } from "react-konva"
 import Konva from "konva"
 import {
   Crop,
@@ -15,11 +15,13 @@ import {
   FlipHorizontal,
   FlipVertical,
   RotateCw,
+  RotateCcw,
   Trash2,
   Copy,
   Lock,
   Unlock,
   Type,
+  ChevronDown,
 } from "lucide-react"
 
 // Filter presets — CSS-equivalent adjustments applied through Konva's own
@@ -149,6 +151,10 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
   // Stage / image geometry (natural size scaled down to fit the viewport)
   const [stageSize, setStageSize] = useState({ width: CANVAS_MAX_W, height: CANVAS_MAX_H })
   const [imgAttrs, setImgAttrs] = useState({ x: 0, y: 0, width: 0, height: 0, rotation: 0, scaleX: 1, scaleY: 1 })
+  // Purely a view-time CSS zoom on the Stage's wrapper — never touches
+  // Stage's own width/height/pixelRatio, so it has zero effect on what
+  // toDataURL() exports; this is "look closer while editing", not a resize.
+  const [zoomPercent, setZoomPercent] = useState(100)
 
   // SIZE (crop) tool
   const [aspectId, setAspectId] = useState("free")
@@ -183,6 +189,13 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
   const [outWidth, setOutWidth] = useState(0)
   const [outHeight, setOutHeight] = useState(0)
   const [aspectLocked, setAspectLocked] = useState(true)
+  // outWidth/outHeight are pre-seeded to the image's natural size so the
+  // RESIZE tab has something to show — but that means they're always > 0,
+  // even when the user never opened that tab. Without this flag, handleSave
+  // would unconditionally resample every export back down to the original
+  // size, silently discarding whatever the crop/frame steps just produced
+  // (this is what made "Khung hình"/"Đổi cỡ" look like they did nothing).
+  const [resizeDirty, setResizeDirty] = useState(false)
 
   const stageRef = useRef(null)
   const imageNodeRef = useRef(null)
@@ -202,6 +215,7 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
         setCropBox({ x: 0, y: 0, width: w, height: h })
         setOutWidth(Math.round(img.naturalWidth))
         setOutHeight(Math.round(img.naturalHeight))
+        setResizeDirty(false)
         setLoading(false)
         setIsDirty(false)
       })
@@ -291,6 +305,13 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
       return
     }
     if (activeTool === "CENSURE") {
+      // Only start drawing a new region when the click did NOT land on an
+      // existing censure Rect — clicking one of those must fall through to
+      // Konva's own drag handling (draggable={activeTool === "CENSURE"} on
+      // the Rect) instead of spawning a second overlapping region. Clicks on
+      // the image itself (or empty canvas) are always fair game for drawing
+      // a new region, unlike the SIZE crop tool.
+      if (e.target.name() === "censure-box") return
       const pos = e.target.getStage().getPointerPosition()
       isDrawingRef.current = true
       const id = `censure-${Date.now()}`
@@ -384,6 +405,8 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
   const handleOutWidthChange = (v) => {
     const w = Number(v) || 0
     setOutWidth(w)
+    setResizeDirty(true)
+    markDirty()
     if (aspectLocked && imgEl) {
       setOutHeight(Math.round((w * imgEl.naturalHeight) / imgEl.naturalWidth))
     }
@@ -392,6 +415,8 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
   const handleOutHeightChange = (v) => {
     const h = Number(v) || 0
     setOutHeight(h)
+    setResizeDirty(true)
+    markDirty()
     if (aspectLocked && imgEl) {
       setOutWidth(Math.round((h * imgEl.naturalWidth) / imgEl.naturalHeight))
     }
@@ -423,7 +448,7 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
       dataUrl = await applyFrame(dataUrl, selectedFrame, frameColor, frameThickness, frameRadius)
     }
 
-    if (outWidth > 0 && outHeight > 0) {
+    if (resizeDirty && outWidth > 0 && outHeight > 0) {
       dataUrl = await resampleDataUrl(dataUrl, outWidth, outHeight)
     }
 
@@ -436,42 +461,25 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in font-sans select-none">
-      <div className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800 h-[92vh] max-h-[820px] animate-scale-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md animate-fade-in font-sans select-none">
+      <div className="relative w-full h-full max-w-7xl max-h-[90vh] mx-4 bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col border border-gray-100 animate-scale-in">
         {/* HEADER */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100 dark:border-slate-800 shrink-0">
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+        <div className="h-16 flex items-center justify-between px-8 border-b border-gray-100 shrink-0">
+          <h2 className="text-base font-black text-gray-800 tracking-tight">
             {t("composer.image_editor")}
           </h2>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={requestClose}
-              className="px-5 py-2 rounded-xl text-xs font-extrabold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              {t("composer.cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={loading}
-              className="px-6 py-2 rounded-xl text-xs font-black bg-[hsl(var(--sidebar-primary))] hover:opacity-90 text-white shadow-md transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-            >
-              {t("composer.editor_save")}
-            </button>
-            <button
-              type="button"
-              onClick={requestClose}
-              className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={requestClose}
+            className="w-10 h-10 rounded-full bg-[#180F1E] hover:bg-black text-yellow-300 flex items-center justify-center shadow-md transition-all cursor-pointer group"
+          >
+            <X className="h-4.5 w-4.5 group-hover:rotate-90 transition-transform duration-300" />
+          </button>
         </div>
 
         <div className="flex-1 flex overflow-hidden relative">
           {/* LEFT SIDEBAR */}
-          <div className="w-44 p-3 border-r border-slate-100 dark:border-slate-800 flex flex-col gap-1.5 shrink-0 bg-slate-50/40 dark:bg-slate-900/40 overflow-y-auto">
+          <div className="w-[180px] p-4 border-r border-gray-100 flex flex-col gap-1.5 shrink-0 bg-white overflow-y-auto">
             {[
               { id: "SIZE", icon: Crop, label: t("composer.editor_size") },
               { id: "FINETUNE", icon: Sliders, label: t("composer.editor_finetune") },
@@ -486,24 +494,60 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                 key={tool.id}
                 type="button"
                 onClick={() => setActiveTool(tool.id)}
-                className={`w-full py-2.5 px-3 rounded-2xl flex items-center gap-2.5 transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[11px] font-bold tracking-wide transition-all cursor-pointer text-left ${
                   activeTool === tool.id
-                    ? "bg-slate-200/80 dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-black"
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold"
+                    ? "bg-gray-100 text-black font-extrabold shadow-sm"
+                    : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 <tool.icon className="h-4 w-4 shrink-0" />
-                <span className="text-xs">{tool.label}</span>
+                <span>{tool.label}</span>
               </button>
             ))}
           </div>
 
-          {/* CENTER VIEWPORT */}
-          <div className="flex-1 flex items-center justify-center p-6 bg-slate-100 dark:bg-slate-950 relative overflow-hidden">
+          {/* CENTER: minimal pill toolbar above the canvas, then the canvas,
+              then a centered (not full-width) settings row below it —
+              matches the mockups in edit-image/ (size.png, filter.png, …):
+              plain white background, no card border around the image, no
+              boxed panels for the controls. */}
+          <div className="flex-1 flex flex-col overflow-hidden select-none">
+          <div className="h-14 flex items-center justify-center border-b border-gray-100/50 shrink-0">
+            <div className="flex items-center gap-6">
+              <button
+                type="button"
+                title="Reset"
+                className="p-2 hover:bg-gray-50 rounded-xl text-gray-400 hover:text-black transition-all cursor-pointer"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+              <div className="flex items-center bg-gray-50 p-1 rounded-xl border border-gray-100 text-[10px] font-black text-gray-600">
+                <button
+                  type="button"
+                  onClick={() => setZoomPercent((z) => Math.max(20, z - 10))}
+                  className="px-2.5 py-1 hover:bg-white rounded-md cursor-pointer"
+                >
+                  -
+                </button>
+                <span className="px-3 min-w-[48px] text-center">{zoomPercent}%</span>
+                <button
+                  type="button"
+                  onClick={() => setZoomPercent((z) => Math.min(300, z + 10))}
+                  className="px-2.5 py-1 hover:bg-white rounded-md cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-6 bg-white relative overflow-auto">
             {loading ? (
-              <div className="w-10 h-10 border-4 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
+              <div className="w-10 h-10 border-4 border-gray-200 border-t-black rounded-full animate-spin" />
             ) : (
-              <div style={previewFilterStyle} className="shadow-lg rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700">
+              <div
+                style={{ ...previewFilterStyle, transform: `scale(${zoomPercent / 100})`, transformOrigin: "center center" }}
+                className="rounded-lg overflow-hidden shrink-0 transition-transform"
+              >
                 <Stage
                   ref={stageRef}
                   width={stageSize.width}
@@ -615,20 +659,48 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                       />
                     ))}
 
-                    {/* Censure boxes */}
+                    {/* Censure boxes — draggable once drawn, so a placed
+                        region can be repositioned without redrawing it. */}
                     {censureBoxes.map((c) => (
-                      <Group key={c.id}>
-                        <Rect
-                          x={Math.min(c.x, c.x + c.width)}
-                          y={Math.min(c.y, c.y + c.height)}
-                          width={Math.abs(c.width)}
-                          height={Math.abs(c.height)}
-                          fill={c.mode === "black" ? "#000000" : "rgba(15,23,42,0.55)"}
-                          filters={c.mode === "blur" ? [Konva.Filters.Blur] : []}
-                          blurRadius={c.mode === "blur" ? 12 : 0}
-                        />
-                      </Group>
+                      <Rect
+                        key={c.id}
+                        name="censure-box"
+                        x={Math.min(c.x, c.x + c.width)}
+                        y={Math.min(c.y, c.y + c.height)}
+                        width={Math.abs(c.width)}
+                        height={Math.abs(c.height)}
+                        fill={c.mode === "black" ? "#000000" : "rgba(15,23,42,0.55)"}
+                        filters={c.mode === "blur" ? [Konva.Filters.Blur] : []}
+                        blurRadius={c.mode === "blur" ? 12 : 0}
+                        draggable={activeTool === "CENSURE"}
+                        onDragEnd={(e) => {
+                          const node = e.target
+                          const w = Math.abs(c.width)
+                          const h = Math.abs(c.height)
+                          setCensureBoxes((prev) =>
+                            prev.map((box) => (box.id === c.id ? { ...box, x: node.x(), y: node.y(), width: w, height: h } : box))
+                          )
+                          markDirty()
+                        }}
+                      />
                     ))}
+
+                    {/* Frame preview — a live border drawn right on the
+                        Stage so picking a preset/color/thickness is visible
+                        immediately, not just after export (applyFrame still
+                        does the real pixel bake on Save). */}
+                    {selectedFrame !== "none" && (
+                      <Rect
+                        x={frameThickness / 2}
+                        y={frameThickness / 2}
+                        width={stageSize.width - frameThickness}
+                        height={stageSize.height - frameThickness}
+                        stroke={frameColor}
+                        strokeWidth={frameThickness}
+                        cornerRadius={frameRadius}
+                        listening={false}
+                      />
+                    )}
 
                     {activeTool === "STICKER" && <Transformer ref={trRef} rotateEnabled resizeEnabled />}
                   </Layer>
@@ -668,72 +740,39 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
             )}
           </div>
 
-          {/* RIGHT PANEL */}
-          <div className="w-80 border-l border-slate-100 dark:border-slate-800 p-5 overflow-y-auto shrink-0 bg-white dark:bg-slate-900">
+          {/* SETTINGS ROW — centered below the viewport (matches edit-image/
+              mockups), not a boxed panel. Overflows to horizontal scroll
+              only when a tab genuinely has more controls than fit. */}
+          <div className="px-6 pb-6 pt-2 overflow-x-auto shrink-0 flex justify-center">
             {activeTool === "SIZE" && (
-              <div className="space-y-5">
-                <div>
-                  <p className="text-xs font-black text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">
-                    Tỉ lệ khung
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {ASPECT_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => handleAspectSelect(preset)}
-                        className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all cursor-pointer ${
-                          aspectId === preset.id
-                            ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40"
-                            : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                        }`}
-                      >
-                        <div
-                          className="border-2 border-slate-500 dark:border-slate-400 rounded-2xs"
-                          style={{
-                            width: preset.ratio ? (preset.ratio >= 1 ? 24 : 24 * preset.ratio) : 20,
-                            height: preset.ratio ? (preset.ratio >= 1 ? 24 / preset.ratio : 24) : 20,
-                          }}
-                        />
-                        <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{preset.label}</span>
-                      </button>
-                    ))}
+              <div className="flex flex-col items-center gap-3 min-w-max">
+                <div className="flex items-center gap-4">
+                  <div className="relative inline-flex items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs font-bold text-gray-700">
+                    <select
+                      value={aspectId}
+                      onChange={(e) => {
+                        const preset = ASPECT_PRESETS.find((p) => p.id === e.target.value)
+                        if (preset) handleAspectSelect(preset)
+                      }}
+                      className="bg-transparent pr-5 focus:outline-none appearance-none cursor-pointer"
+                    >
+                      {ASPECT_PRESETS.map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="h-3 w-3 absolute right-2.5 pointer-events-none text-gray-500" />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Rộng (px)</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={cropBox ? Math.round(cropBox.width) : 0}
-                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-700 dark:text-slate-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Cao (px)</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={cropBox ? Math.round(cropBox.height) : 0}
-                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold text-slate-700 dark:text-slate-300"
-                    />
-                  </div>
-                </div>
+                  <span className="text-[10px] font-mono font-bold text-gray-400">
+                    {cropBox ? `${Math.round(cropBox.width)} × ${Math.round(cropBox.height)}` : ""}
+                  </span>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleRotate90}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
-                  >
-                    <RotateCw className="h-3.5 w-3.5" /> Xoay 90°
-                  </button>
                   <button
                     type="button"
                     onClick={() => handleFlip("h")}
-                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
+                    className="p-2 rounded-xl hover:bg-gray-50 text-gray-500 hover:text-black transition-all cursor-pointer"
                     title="Lật ngang"
                   >
                     <FlipHorizontal className="h-4 w-4" />
@@ -741,27 +780,33 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                   <button
                     type="button"
                     onClick={() => handleFlip("v")}
-                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
+                    className="p-2 rounded-xl hover:bg-gray-50 text-gray-500 hover:text-black transition-all cursor-pointer"
                     title="Lật dọc"
                   >
                     <FlipVertical className="h-4 w-4" />
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleRotate90}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-gray-100 hover:bg-gray-200 text-black transition-all cursor-pointer"
+                >
+                  <RotateCw className="h-3.5 w-3.5" /> Xoay 90°
+                </button>
               </div>
             )}
 
             {activeTool === "FINETUNE" && (
-              <div className="space-y-5">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-6 min-w-max">
+                <div className="flex items-center gap-2 shrink-0">
                   {["ROTATE", "ADJUST"].map((m) => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => setFinetuneMode(m)}
                       className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all cursor-pointer ${
-                        finetuneMode === m
-                          ? "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"
+                        finetuneMode === m ? "bg-gray-100 text-black" : "text-gray-400 hover:text-black"
                       }`}
                     >
                       {m === "ROTATE" ? "Xoay" : "Điều chỉnh"}
@@ -770,8 +815,8 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                 </div>
 
                 {finetuneMode === "ROTATE" ? (
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                  <div className="w-64 shrink-0">
+                    <div className="flex items-center justify-between text-xs font-bold text-gray-600 mb-1.5">
                       <span>Góc xoay</span>
                       <span>{imgAttrs.rotation}°</span>
                     </div>
@@ -784,18 +829,18 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                         setImgAttrs((prev) => ({ ...prev, rotation: Number(e.target.value) }))
                         markDirty()
                       }}
-                      className="w-full accent-indigo-600"
+                      className="w-full accent-black"
                     />
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="flex items-center gap-6">
                     {[
                       { label: "Độ sáng", value: brightness, setter: setBrightness },
                       { label: "Độ tương phản", value: contrast, setter: setContrast },
                       { label: "Độ bão hòa", value: saturation, setter: setSaturation },
                     ].map((s) => (
-                      <div key={s.label}>
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                      <div key={s.label} className="w-48 shrink-0">
+                        <div className="flex items-center justify-between text-xs font-bold text-gray-600 mb-1.5">
                           <span>{s.label}</span>
                           <div className="flex items-center gap-1.5">
                             <span>{s.value}</span>
@@ -805,7 +850,7 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                                 s.setter(100)
                                 markDirty()
                               }}
-                              className="text-[10px] text-indigo-600 hover:underline cursor-pointer"
+                              className="text-[10px] text-gray-400 hover:underline cursor-pointer"
                             >
                               reset
                             </button>
@@ -820,7 +865,7 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                             s.setter(Number(e.target.value))
                             markDirty()
                           }}
-                          className="w-full accent-indigo-600"
+                          className="w-full accent-black"
                         />
                       </div>
                     ))}
@@ -830,7 +875,7 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
             )}
 
             {activeTool === "FILTER" && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-3 min-w-max">
                 {FILTER_PRESETS.map((f) => (
                   <button
                     key={f.id}
@@ -839,170 +884,137 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                       setSelectedFilter(f.id)
                       markDirty()
                     }}
-                    className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all cursor-pointer ${
-                      selectedFilter === f.id
-                        ? "border-indigo-600 ring-2 ring-indigo-500/30"
-                        : "border-slate-200 dark:border-slate-700"
-                    }`}
+                    className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 group"
                   >
-                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800">
+                    <div
+                      className={`w-14 h-14 rounded-xl overflow-hidden bg-gray-100 transition-all ${
+                        selectedFilter === f.id ? "ring-2 ring-black ring-offset-2" : "opacity-70 group-hover:opacity-100"
+                      }`}
+                    >
                       {imageUrl && <img src={imageUrl} alt={f.name} className="w-full h-full object-cover" />}
                     </div>
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">{f.name}</span>
+                    <span className={`text-[10px] font-bold ${selectedFilter === f.id ? "text-black" : "text-gray-400"}`}>
+                      {f.name}
+                    </span>
                   </button>
                 ))}
               </div>
             )}
 
             {activeTool === "STICKER" && (
-              <div className="space-y-4">
+              <div className="flex flex-col items-center gap-3 min-w-max">
                 {selectedId && stickers.some((s) => s.id === selectedId) ? (
-                  <div className="space-y-3">
-                    <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                      Sticker đã chọn
-                    </p>
-                    <div className="text-5xl text-center py-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                  <div className="flex items-center gap-4">
+                    <div className="text-4xl bg-gray-50 rounded-xl px-4 py-2">
                       {stickers.find((s) => s.id === selectedId)?.emoji}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => duplicateSticker(selectedId)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
-                      >
-                        <Copy className="h-3.5 w-3.5" /> Nhân đôi
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeSticker(selectedId)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-rose-200 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold text-rose-600 cursor-pointer"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Xóa
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => duplicateSticker(selectedId)}
+                      className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-xs font-bold text-gray-700 cursor-pointer"
+                    >
+                      <Copy className="h-3.5 w-3.5" /> Nhân đôi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeSticker(selectedId)}
+                      className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-gray-50 hover:bg-red-50 text-xs font-bold text-red-600 cursor-pointer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Xóa
+                    </button>
                   </div>
                 ) : (
-                  <>
-                    <input
-                      type="text"
-                      placeholder="Tìm sticker..."
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-none"
-                      disabled
-                    />
-                    <div className="grid grid-cols-6 gap-1.5">
-                      {EMOJI_STICKERS.map((em, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => handleAddSticker(em)}
-                          className="aspect-square rounded-lg bg-slate-100 dark:bg-slate-800 text-xl flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
-                        >
-                          {em}
-                        </button>
-                      ))}
-                    </div>
-                  </>
+                  <div className="flex items-center gap-1.5">
+                    {EMOJI_STICKERS.map((em, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => handleAddSticker(em)}
+                        className="w-9 h-9 shrink-0 rounded-full bg-gray-50 text-xl flex items-center justify-center hover:scale-110 transition-transform cursor-pointer"
+                      >
+                        {em}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
             )}
 
             {activeTool === "DRAW" && (
-              <div className="space-y-5">
-                <div className="grid grid-cols-3 gap-1.5">
+              <div className="flex flex-col items-center gap-3 min-w-max">
+                <div className="flex items-center gap-8">
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] text-gray-400 font-normal">color</span>
+                    <div className="flex items-center gap-1.5">
+                      {DRAW_COLORS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setDrawColor(c)}
+                          className={`w-5 h-5 rounded-full border-2 cursor-pointer shrink-0 ${
+                            drawColor === c ? "border-black scale-110" : "border-transparent"
+                          }`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={drawColor}
+                        onChange={(e) => setDrawColor(e.target.value)}
+                        className="w-5 h-5 rounded-full border border-gray-300 cursor-pointer bg-transparent shrink-0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-[10px] text-gray-400 font-normal">line width</span>
+                    <div className="flex items-center gap-2">
+                      {LINE_WIDTHS.map((lw) => (
+                        <button
+                          key={lw.id}
+                          type="button"
+                          onClick={() => setLineWidthId(lw.id)}
+                          className={`flex items-center justify-center w-7 h-7 rounded-lg cursor-pointer shrink-0 ${
+                            lineWidthId === lw.id ? "bg-gray-100" : "hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="rounded-full bg-gray-800" style={{ width: lw.size, height: lw.size }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
                   {DRAW_TOOLS.map((tool) => (
                     <button
                       key={tool.id}
                       type="button"
                       onClick={() => setDrawTool(tool.id)}
-                      className={`py-2 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
-                        drawTool === tool.id
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                        drawTool === tool.id ? "bg-gray-100 text-black" : "text-gray-500 hover:bg-gray-50"
                       }`}
                     >
                       {tool.label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={clearDrawings}
+                    className="ml-2 text-[11px] font-bold text-red-600 hover:underline cursor-pointer shrink-0"
+                  >
+                    Xóa tất cả
+                  </button>
                 </div>
-
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1.5">Màu sắc</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {DRAW_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setDrawColor(c)}
-                        className={`w-6 h-6 rounded-full border-2 cursor-pointer ${
-                          drawColor === c ? "border-slate-900 dark:border-white scale-110" : "border-transparent"
-                        }`}
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
-                    <input
-                      type="color"
-                      value={drawColor}
-                      onChange={(e) => setDrawColor(e.target.value)}
-                      className="w-6 h-6 rounded-full border border-slate-300 cursor-pointer bg-transparent"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1.5">Độ dày nét</p>
-                  <div className="flex items-center gap-3">
-                    {LINE_WIDTHS.map((lw) => (
-                      <button
-                        key={lw.id}
-                        type="button"
-                        onClick={() => setLineWidthId(lw.id)}
-                        className={`flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer ${
-                          lineWidthId === lw.id ? "bg-slate-200 dark:bg-slate-700" : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                        }`}
-                      >
-                        <div className="rounded-full bg-slate-800 dark:bg-slate-200" style={{ width: lw.size, height: lw.size }} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={clearDrawings}
-                  className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
-                >
-                  Xóa tất cả
-                </button>
               </div>
             )}
 
             {activeTool === "FRAME" && (
-              <div className="space-y-5">
-                <div className="grid grid-cols-3 gap-2">
-                  {FRAME_PRESETS.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedFrame(f.id)
-                        markDirty()
-                      }}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all cursor-pointer ${
-                        selectedFrame === f.id
-                          ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40"
-                          : "border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      <div className="w-8 h-8 rounded border-2 border-slate-500 dark:border-slate-400 bg-slate-100 dark:bg-slate-800" />
-                      <span className="text-[9px] font-bold text-slate-700 dark:text-slate-300">{f.label}</span>
-                    </button>
-                  ))}
-                </div>
-
+              <div className="flex flex-col items-center gap-3 min-w-max">
                 {selectedFrame !== "none" && (
-                  <>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1.5">Màu khung</p>
+                  <div className="flex items-center gap-6">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xs font-medium text-gray-600">color</span>
                       <input
                         type="color"
                         value={frameColor}
@@ -1010,11 +1022,11 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                           setFrameColor(e.target.value)
                           markDirty()
                         }}
-                        className="w-9 h-9 rounded-full border border-slate-300 cursor-pointer bg-transparent"
+                        className="w-7 h-7 rounded-full border border-gray-300 cursor-pointer bg-white"
                       />
                     </div>
-                    <div>
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                    <div className="w-40 shrink-0">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-gray-600 mb-1">
                         <span>Độ dày</span>
                         <span>{frameThickness}px</span>
                       </div>
@@ -1027,11 +1039,11 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                           setFrameThickness(Number(e.target.value))
                           markDirty()
                         }}
-                        className="w-full accent-indigo-600"
+                        className="w-full accent-black"
                       />
                     </div>
-                    <div>
-                      <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                    <div className="w-40 shrink-0">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-gray-600 mb-1">
                         <span>Bo góc</span>
                         <span>{frameRadius}px</span>
                       </div>
@@ -1044,110 +1056,142 @@ export default function ImageEditorModal({ isOpen, onClose, imageUrl, onSave }) 
                           setFrameRadius(Number(e.target.value))
                           markDirty()
                         }}
-                        className="w-full accent-indigo-600"
+                        className="w-full accent-black"
                       />
                     </div>
-                  </>
+                  </div>
                 )}
+
+                <div className="flex items-center gap-2.5">
+                  {FRAME_PRESETS.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedFrame(f.id)
+                        markDirty()
+                      }}
+                      className={`w-14 h-16 rounded-lg flex items-center justify-center p-1 transition-all cursor-pointer bg-white border-2 shrink-0 ${
+                        selectedFrame === f.id
+                          ? "border-yellow-400 shadow-md ring-1 ring-yellow-400/50"
+                          : "border-gray-200 hover:border-gray-300"
+                      }`}
+                    >
+                      <span className="text-[9px] font-bold text-gray-700">{f.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
             {activeTool === "CENSURE" && (
-              <div className="space-y-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Vẽ một vùng trên ảnh để làm mờ hoặc che nội dung nhạy cảm.
-                </p>
+              <div className="flex items-center gap-3 min-w-max">
                 {censureBoxes.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">Kéo chuột trên ảnh để tạo vùng che đầu tiên.</p>
+                  <p className="text-xs text-gray-400 italic whitespace-nowrap">
+                    Kéo chuột trên ảnh để tạo vùng che đầu tiên.
+                  </p>
                 ) : (
-                  <div className="space-y-2">
-                    {censureBoxes.map((c, idx) => (
-                      <div
-                        key={c.id}
-                        className="flex items-center justify-between gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700"
+                  censureBoxes.map((c, idx) => (
+                    <div key={c.id} className="flex items-center gap-2 py-1.5 px-2 rounded-xl bg-gray-50 shrink-0">
+                      <span className="text-xs font-bold text-gray-600 whitespace-nowrap">Vùng {idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleCensureMode(c.id)}
+                        className="px-2.5 py-1 rounded-lg bg-white text-[10px] font-bold cursor-pointer whitespace-nowrap"
                       >
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">Vùng {idx + 1}</span>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => toggleCensureMode(c.id)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold cursor-pointer"
-                          >
-                            {c.mode === "blur" ? "Làm mờ" : "Che đen"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeCensureBox(c.id)}
-                            className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 cursor-pointer"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        {c.mode === "blur" ? "Làm mờ" : "Che đen"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeCensureBox(c.id)}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))
                 )}
               </div>
             )}
 
             {activeTool === "RESIZE" && (
-              <div className="space-y-4">
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Chiều rộng (px)</label>
+              <div className="flex flex-col items-center gap-2 min-w-max">
+                <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-3 py-2 font-mono font-bold text-xs">
+                  <div className="flex items-center gap-1 bg-white border border-gray-200 px-2.5 py-1 rounded-xl">
                     <input
                       type="number"
                       value={outWidth}
                       onChange={(e) => handleOutWidthChange(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold"
+                      className="w-14 bg-transparent text-center focus:outline-none"
                     />
+                    <span className="text-gray-400 font-sans text-[11px]">W</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setAspectLocked((v) => !v)}
-                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 cursor-pointer mb-0.5"
+                    className="p-1.5 rounded-xl hover:bg-white text-gray-600 cursor-pointer transition-colors"
                     title="Khóa tỉ lệ"
                   >
-                    {aspectLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                    {aspectLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
                   </button>
-                  <div className="flex-1">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Chiều cao (px)</label>
+                  <div className="flex items-center gap-1 bg-white border border-gray-200 px-2.5 py-1 rounded-xl">
                     <input
                       type="number"
                       value={outHeight}
                       onChange={(e) => handleOutHeightChange(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono font-bold"
+                      className="w-14 bg-transparent text-center focus:outline-none"
                     />
+                    <span className="text-gray-400 font-sans text-[11px]">H</span>
                   </div>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-gray-400 whitespace-nowrap">
                   Kích thước tệp ước tính: {((outWidth * outHeight * 3) / 1024 / 1024).toFixed(2)} MB
                 </p>
               </div>
             )}
           </div>
+          </div>
+        </div>
+
+        {/* FOOTER */}
+        <div className="h-16 border-t border-gray-100 flex items-center justify-end px-8 gap-4 shrink-0">
+          <button
+            type="button"
+            onClick={requestClose}
+            className="text-xs font-black text-gray-500 hover:text-black transition-all cursor-pointer uppercase tracking-wider"
+          >
+            {t("composer.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={loading}
+            className="px-6 py-2.5 text-xs font-black bg-[#1A1A1A] hover:bg-black text-yellow-300 rounded-xl transition-all cursor-pointer shadow-md uppercase tracking-wider disabled:opacity-50"
+          >
+            {t("composer.editor_save")}
+          </button>
         </div>
       </div>
 
       {confirmClose && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40" onClick={() => setConfirmClose(false)}>
           <div
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-5 w-72 border border-slate-200 dark:border-slate-800"
+            className="bg-white rounded-2xl shadow-2xl p-5 w-72 border border-gray-100"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-4">Hủy các thay đổi?</p>
+            <p className="text-sm font-bold text-gray-800 mb-4">Hủy các thay đổi?</p>
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmClose(false)}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-100 cursor-pointer"
               >
                 Tiếp tục sửa
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 cursor-pointer"
               >
                 Hủy thay đổi
               </button>
