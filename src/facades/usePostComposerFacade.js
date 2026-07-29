@@ -254,12 +254,23 @@ export function usePostComposerFacade(initialScheduledAt, brandId, onSuccess, on
     setDraft((prev) => {
       const currentNet = prev.networkCustom[platformId] || { useTemplate: true, caption: "", mediaUrls: [] }
       const newUseTemplate = value !== undefined ? value : !currentNet.useTemplate
+
+      // Turning template off for the first time: carry over the shared
+      // caption/mediaUrls as the starting point to edit, instead of an empty
+      // box the user would have to retype/reselect from scratch. Only seeds
+      // when this platform has no custom content yet, so re-toggling later
+      // never clobbers what the user already typed here.
+      const isFirstCustomization = newUseTemplate === false && !currentNet.caption && currentNet.mediaUrls.length === 0
+      const seededNet = isFirstCustomization
+        ? { ...currentNet, caption: prev.caption, mediaUrls: [...prev.mediaUrls] }
+        : currentNet
+
       return {
         ...prev,
         networkCustom: {
           ...prev.networkCustom,
           [platformId]: {
-            ...currentNet,
+            ...seededNet,
             useTemplate: newUseTemplate,
           },
         },
