@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import { SidebarWorkspace } from "./layout/SidebarWorkspace";
 import { SidebarAdmin } from "./layout/SidebarAdmin";
@@ -7,6 +7,9 @@ import { SupportChat } from "./components/app/SupportChat";
 import { PostCreatorPage } from "./pages/workspace/PostCreator";
 import { ConnectionsOverlay } from "./components/shared/ConnectionsOverlay";
 import { GlobalConfirmDialog } from "./components/shared/GlobalConfirmDialog";
+import { useAuthStore } from "./store/useAuthStore";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { FeatureGate } from "./components/shared/FeatureGate";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PRODUCT_IDS } from "./constants/products";
 import { CACHE_CONFIG } from "./constants/cache-config.constants";
@@ -32,7 +35,6 @@ import { InviteFlow } from "./pages/auth/InviteFlow";
 // Workspace Pages
 import { DashboardPage } from "./pages/workspace/Dashboard";
 import { PlatformDashboardPage } from "./pages/workspace/PlatformDashboard";
-import { AnalyticsPage } from "./pages/workspace/Analytics";
 import { MediaLibraryPage } from "./pages/workspace/MediaLibrary";
 import { SettingsPage } from "./pages/workspace/Settings";
 import { PricingPage } from "./pages/workspace/Pricing";
