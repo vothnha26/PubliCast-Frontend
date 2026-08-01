@@ -112,15 +112,20 @@ export default function ContentComposerRegion({
     }
   }
 
-  const handleSaveEditedVideo = (newUrl) => {
-    if (editingVideoIndex !== null && newUrl) {
-      const updated = [...activeMediaUrls]
-      updated[editingVideoIndex] = newUrl
-      if (isEditByNetwork && !isTemplateTab && !isUseTemplate) {
-        if (onUpdateNetworkMedia) onUpdateNetworkMedia(activeNetworkTab, updated)
-      } else {
-        onMediaChange(updated)
-      }
+  const handleSaveEditedVideo = (result) => {
+    // Split mode passes an array of clip URLs (in segment order) instead of
+    // a single string — splice all of them in at the edited clip's position
+    // so the original is replaced by N separate media items, not just [0].
+    if (editingVideoIndex === null || !result) return
+    const newUrls = Array.isArray(result) ? result.filter(Boolean) : [result]
+    if (newUrls.length === 0) return
+
+    const updated = [...activeMediaUrls]
+    updated.splice(editingVideoIndex, 1, ...newUrls)
+    if (isEditByNetwork && !isTemplateTab && !isUseTemplate) {
+      if (onUpdateNetworkMedia) onUpdateNetworkMedia(activeNetworkTab, updated)
+    } else {
+      onMediaChange(updated)
     }
   }
 

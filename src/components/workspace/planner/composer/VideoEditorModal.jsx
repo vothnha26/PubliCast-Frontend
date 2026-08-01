@@ -82,6 +82,7 @@ export default function VideoEditorModal({
   const [startTime, setStartTime] = useState(0)
   const [endTime, setEndTime] = useState(10)
   const [aspectRatio, setAspectRatio] = useState("original") // 'original' | '1:1' | '9:16' | '16:9'
+  const [splitPoints, setSplitPoints] = useState([]) // sorted seconds, strictly inside (startTime, endTime)
   const videoRef = useRef(null)
 
   // SIZE tool states
@@ -134,6 +135,17 @@ export default function VideoEditorModal({
     }
   }, [])
 
+  // Drop any split point that falls outside the trim range whenever the
+  // range is narrowed (dragging a trim handle past a marker) — a split
+  // point outside [startTime, endTime] is meaningless to the backend, which
+  // rejects splitPoints not strictly inside the range.
+  useEffect(() => {
+    setSplitPoints((prev) => {
+      const filtered = prev.filter((p) => p > startTime && p < endTime)
+      return filtered.length === prev.length ? prev : filtered
+    })
+  }, [startTime, endTime])
+
   useEffect(() => {
     isMountedRef.current = true
     return () => {
@@ -149,6 +161,7 @@ export default function VideoEditorModal({
       setStartTime(0)
       setEndTime(10)
       setIsResizeDirty(false)
+      setSplitPoints([])
     } else {
       stopPolling()
     }
@@ -214,7 +227,88 @@ export default function VideoEditorModal({
     [onClose, onSave, stopPolling]
   )
 
-  if (!isOpen) return null
+  // Split mode: poll every segment's taskId independently. Each segment
+  // resolves to SUCCESS/FAILED on its own timeline — we track per-segment
+  // status in a map and only call onSave/onClose once every segment has
+  // reached a terminal state, so a slow segment doesn't get silently
+  // dropped from the final ordered list of clip URLs.
+  const startPollingSegments = useCallback(
+    (segments) => {
+      stopPolling()
+      pollCountRef.current = 0
+      setIsProcessing(true)
+
+      const results = new Map(segments.map((s) => [s.taskId, { status: "PROCESSING", videoUrl: null, error: null }]))
+
+      pollIntervalRef.current = setInterval(async () => {
+        if (!isMountedRef.current) {
+          stopPolling()
+          return
+        }
+
+        pollCountRef.current += 1
+        if (pollCountRef.current > 120) {
+          stopPolling()
+          if (isMountedRef.current) {
+            setIsProcessing(false)
+            setErrorMessage("Thời gian xử lý video quá lâu (Timeout 3 phút). Vui lòng thử lại sau.")
+          }
+          return
+        }
+
+        const pending = segments.filter((s) => results.get(s.taskId).status === "PROCESSING")
+        try {
+          await Promise.all(
+            pending.map(async (s) => {
+              const statusRes = await postService.getTrimStatus(s.taskId)
+              if (statusRes.status === "SUCCESS" || statusRes.status === "FAILED") {
+                results.set(s.taskId, {
+                  status: statusRes.status,
+                  videoUrl: statusRes.videoUrl || null,
+                  error: statusRes.error || null,
+                })
+              }
+            })
+          )
+        } catch (pollErr) {
+          console.error("[VideoEditorModal] Error polling split segment status:", pollErr)
+          const statusCode = pollErr?.response?.status
+          if (statusCode === 404) {
+            stopPolling()
+            if (isMountedRef.current) {
+              setIsProcessing(false)
+              setErrorMessage("Không tìm thấy tiến trình xử lý video hoặc công việc đã bị hủy/hết hạn.")
+            }
+            return
+          }
+        }
+
+        if (!isMountedRef.current) {
+          stopPolling()
+          return
+        }
+
+        const allDone = segments.every((s) => results.get(s.taskId).status !== "PROCESSING")
+        if (!allDone) return
+
+        stopPolling()
+        setIsProcessing(false)
+
+        const failed = segments.find((s) => results.get(s.taskId).status === "FAILED")
+        if (failed) {
+          setErrorMessage(results.get(failed.taskId).error || "Xử lý một trong các đoạn video đã thất bại.")
+          return
+        }
+
+        const orderedUrls = segments.map((s) => results.get(s.taskId).videoUrl).filter(Boolean)
+        if (onSave && orderedUrls.length > 0) {
+          onSave(orderedUrls)
+        }
+        onClose()
+      }, 1500)
+    },
+    [onClose, onSave, stopPolling]
+  )
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
@@ -267,13 +361,20 @@ export default function VideoEditorModal({
         saveAudio,
         keepAudio: saveAudio,
         audioVolume: saveAudio ? 100 : 0,
+        splitPoints: splitPoints.length > 0 ? splitPoints : undefined,
         brandId,
       }
 
       console.log("[VideoEditorModal] Submitting video trim payload:", payload)
       const response = await postService.trimVideo(payload)
-      const taskId = response?.taskId
 
+      if (Array.isArray(response?.segments) && response.segments.length > 0) {
+        setProcessingStatus(`Đang tách video thành ${response.segments.length} đoạn và render qua FFmpeg...`)
+        startPollingSegments(response.segments)
+        return
+      }
+
+      const taskId = response?.taskId
       if (!taskId) {
         if (response?.videoUrl) {
           if (onSave) onSave(response.videoUrl)
@@ -478,6 +579,8 @@ export default function VideoEditorModal({
     `,
     transform: `rotate(${rotationDegree}deg) scale(${scaleFactor})`,
   }
+
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in font-sans select-none">
@@ -789,11 +892,12 @@ export default function VideoEditorModal({
                   <button
                     type="button"
                     onClick={() => {
-                      if (videoRef.current) {
-                        setStartTime(videoRef.current.currentTime)
-                      }
+                      const t = videoRef.current ? videoRef.current.currentTime : playheadTime
+                      if (t <= startTime || t >= endTime) return
+                      setSplitPoints((prev) => (prev.includes(t) ? prev : [...prev, t].sort((a, b) => a - b)))
                     }}
-                    className="px-3 py-1 rounded-full bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-white shadow-xs flex items-center gap-1.5 text-xs font-extrabold transition-all cursor-pointer active:scale-95 border border-slate-200 dark:border-slate-600"
+                    disabled={playheadTime <= startTime || playheadTime >= endTime}
+                    className="px-2 py-0.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white cursor-pointer font-extrabold flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Tách clip tại vị trí hiện tại"
                   >
                     <Scissors className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -919,6 +1023,22 @@ export default function VideoEditorModal({
                     Kéo khoảng: {formatTime(endTime - startTime)}
                   </div>
                 </div>
+
+                {/* Split Point Markers — click to remove */}
+                {splitPoints.map((sp) => (
+                  <div
+                    key={sp}
+                    className="absolute top-0 bottom-0 w-0.5 bg-indigo-500 z-25 cursor-pointer group/split"
+                    style={{ left: `${(sp / duration) * 100}%` }}
+                    title="Bấm để xóa điểm tách"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSplitPoints((prev) => prev.filter((p) => p !== sp))
+                    }}
+                  >
+                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-indigo-500 border border-white group-hover/split:bg-red-500 transition-colors" />
+                  </div>
+                ))}
 
                 {/* Left Gold Trim Handle */}
                 <div
