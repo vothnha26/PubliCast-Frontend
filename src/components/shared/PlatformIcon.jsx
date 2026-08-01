@@ -1,4 +1,3 @@
-// Copy nguyên từ frontend (cũ)/src/components/shared/PlatformIcon.jsx
 import React from "react";
 
 const PLATFORM_COLORS = {
@@ -66,10 +65,11 @@ export function PlatformIcon({ platform, size = 18, variant = "color", className
   const bg = PLATFORM_COLORS[normPlatform] || "#888";
 
   if (variant === "flat") {
+    const hasColorClass = className?.includes('text-');
     return (
-      <div
-        className={`flex items-center justify-center shrink-0 ${className}`}
-        style={{ width: size, height: size, color: bg }}
+      <div 
+        className={`flex items-center justify-center shrink-0 ${className}`} 
+        style={{ width: size, height: size, ...(hasColorClass ? {} : { color: bg }) }}
       >
         {renderSvg(size)}
       </div>

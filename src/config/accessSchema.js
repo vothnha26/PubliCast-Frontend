@@ -1,5 +1,3 @@
-// Copy nguyên từ frontend (cũ)/src/config/accessSchema.js — KHÔNG tự đổi thứ tự/giá trị PLAN_TIERS,
-// khớp đúng thứ tự phân cấp gói cước đang dùng ở backend (PlanLimit).
 export const PLAN_TIERS = ["FREE", "STARTER", "PRO", "AGENCY", "ENTERPRISE"];
 
 export const ACCESS_STRATEGIES = {
@@ -9,9 +7,6 @@ export const ACCESS_STRATEGIES = {
   SHOW_ADS: "SHOW_ADS",     // Chèn quảng cáo xung quanh hoặc bắt xem quảng cáo
 };
 
-// NOTE: mỗi feature key khai báo ở đây PHẢI có middleware checkLimit(...) tương ứng
-// ở backend/src/middlewares/plan-limit.middleware.js cho route liên quan — FE chỉ
-// là lớp UX, không phải nơi enforce thật. Xem PubliCast/backend/src/routes/**.
 export const FEATURE_MAP = {
   // Quyền tạo bài viết
   CREATE_POSTS: {
@@ -20,7 +15,7 @@ export const FEATURE_MAP = {
     fallbackStrategy: ACCESS_STRATEGIES.DISABLE,
     fallbackMessage: "Bạn cần có quyền tạo bài viết để sử dụng tính năng này."
   },
-
+  
   // Tính năng import dữ liệu nâng cao
   IMPORT_CSV: {
     permissions: ["CREATE_POSTS"],
@@ -60,8 +55,4 @@ export const FEATURE_MAP = {
     fallbackStrategy: ACCESS_STRATEGIES.HIDE,
     fallbackMessage: "Bạn không có quyền quản lý vai trò."
   }
-
-  // TODO(planner): khi code các tính năng giới hạn theo gói riêng cho Planner
-  // (VD: PLANNER_BEST_TIMES chỉ PRO+, PLANNER_MAX_POSTS_PER_MONTH...), thêm key
-  // mới vào đây — đối chiếu đúng field trong backend PlanLimit trước khi thêm.
 };

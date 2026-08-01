@@ -1,28 +1,9 @@
-# publicast-frontend
+# StreamHub
 
-Sandbox thử nghiệm UI mới cho hệ thống quản lý mạng xã hội **PubliCast**, gọi trực tiếp vào backend hiện có (không thay đổi backend).
+This is a code bundle for StreamHub. The original project is available at https://www.figma.com/design/sn3sNX5qpaoSzlZFKMgfnV/StreamHub.
 
-## Tech Stack
-- **Framework**: React 18 + Vite
-- **Styling**: Tailwind CSS v4 + Design Tokens (`src/assets/styles/theme.css`)
-- **Components**: shadcn/ui primitives (Radix UI)
-- **State Management**: Zustand (Session cookie-based)
-- **Routing**: react-router-dom v7
-- **HTTP Client**: Axios (`withCredentials: true`, automatic token refresh queue)
-- **Real-time**: Socket.io-client (`withCredentials: true`, emit queueing)
-- **i18n**: react-i18next
+## Running the code
 
-## Setup & Running Local
-```bash
-# Cài đặt dependencies
-npm install
+Run `npm i` to install the dependencies.
 
-# Chạy môi trường Dev (tự kết nối backend localhost:3000)
-npm run dev
-```
-
-## Cookie-Based Auth Protocol
-- API Base URL được cấu hình tại `.env` (`VITE_API_BASE_URL=http://localhost:3000/api`).
-- Tất cả request gửi kèm `withCredentials: true`.
-- Khi gặp lỗi `401 Unauthorized`, Axios interceptor tự động gọi `/auth/refresh` và retry. Quá trình refresh áp dụng cơ chế single-refresh lock (`isRefreshing` flag + subscriber queue) để ngăn chặn race condition khi có nhiều request đồng thời.
-- Sự kiện session hết hạn phát tín hiệu `SESSION_EXPIRED` custom event điều hướng người dùng về `/login`.
+Run `npm run dev` to start the development server.

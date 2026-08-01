@@ -1,6 +1,7 @@
-export const THEME_MODE = Object.freeze({
-  LIGHT: "light",
-  DARK: "dark",
-})
-
-export const THEME_STORAGE_KEY = "publicast_theme"
+/**
+ * THEME_MODES - Supported display theme modes.
+ */
+export const THEME_MODES = {
+  LIGHT: 'light',
+  DARK: 'dark',
+};

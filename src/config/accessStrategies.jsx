@@ -1,11 +1,10 @@
-// Copy nguyên từ frontend (cũ)/src/config/accessStrategies.jsx
 import React from 'react';
 import { toast } from 'sonner';
 
 export const ACCESS_STRATEGIES_REGISTRY = {
   // 1. Chiến lược ẩn phần tử hoàn toàn
   HIDE: (children, config, fallback) => {
-    return fallback;
+    return fallback; 
   },
 
   // 2. Chiến lược vô hiệu hóa phần tử
