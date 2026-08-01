@@ -1,7 +1,7 @@
 const testimonials = [
   {
     stars: 5,
-    quote: "StreamHub completely replaced 4 different tools we were using. The multi-platform scheduling alone saved us hours every week.",
+    quote: "PubliCast completely replaced 4 different tools we were using. The multi-platform scheduling alone saved us hours every week.",
     name: "Sarah Chen",
     role: "Content Director",
     brand: "Pixel Studios",
@@ -46,7 +46,7 @@ export function Testimonials() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {testimonials.map((t) => (
-            <div key={t.name} className="bg-card rounded-xl p-6 relative" style={{ border: "0.5px solid #E5E7EB" }}>
+            <div key={t.name} className="bg-white rounded-xl p-6 relative" style={{ border: "0.5px solid #E5E7EB" }}>
               {/* Platform badge */}
               <div
                 className="absolute top-4 right-4 w-6 h-6 rounded-md flex items-center justify-center"
