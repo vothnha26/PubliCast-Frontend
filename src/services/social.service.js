@@ -41,8 +41,8 @@ class SocialService {
     return data;
   }
 
-  async getPublishedVideos(brandId, pageToken = null, limit = 10) {
-    const url = `/social/youtube/published-videos?brandId=${encodeURIComponent(brandId)}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}${limit ? `&limit=${encodeURIComponent(limit)}` : ''}`;
+  async getPublishedVideos(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const url = `/social/youtube/published-videos?brandId=${encodeURIComponent(brandId)}${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}${limit ? `&limit=${encodeURIComponent(limit)}` : ''}${socialAccountId ? `&socialAccountId=${encodeURIComponent(socialAccountId)}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
@@ -110,8 +110,8 @@ class SocialService {
     return data;
   }
 
-  async disconnectGoogleAccount(brandId) {
-    const data = await apiV2.post('/social/google/disconnect', { brandId });
+  async disconnectGoogleAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/google/disconnect', { brandId, socialAccountId });
     return data;
   }
 
@@ -120,8 +120,8 @@ class SocialService {
     return data;
   }
 
-  async disconnectGoogleDriveAccount(brandId) {
-    const data = await apiV2.post('/social/google-drive/disconnect', { brandId });
+  async disconnectGoogleDriveAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/google-drive/disconnect', { brandId, socialAccountId });
     return data;
   }
 
@@ -130,14 +130,14 @@ class SocialService {
     return data;
   }
 
-  async getFacebookPublishedPosts(brandId, pageToken = null, limit = 10) {
-    const url = `/social/facebook/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}`;
+  async getFacebookPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const url = `/social/facebook/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
 
-  async disconnectFacebookAccount(brandId) {
-    const data = await apiV2.post('/social/facebook/disconnect', { brandId });
+  async disconnectFacebookAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/facebook/disconnect', { brandId, socialAccountId });
     return data;
   }
 
@@ -174,8 +174,21 @@ class SocialService {
     return data;
   }
 
-  async disconnectTikTokAccount(brandId) {
-    const data = await apiV2.post('/social/tiktok/disconnect', { brandId });
+  async getTikTokComments(brandId, { videoId = null, commentId = null, maxCount = 10, cursor = 0, socialAccountId = null } = {}) {
+    const params = new URLSearchParams({
+      brandId,
+      ...(videoId ? { videoId } : {}),
+      ...(commentId ? { commentId } : {}),
+      ...(maxCount ? { maxCount } : {}),
+      ...(cursor ? { cursor } : {}),
+      ...(socialAccountId ? { socialAccountId } : {})
+    }).toString();
+    const data = await apiV2.get(`/social/tiktok/comments?${params}`);
+    return data;
+  }
+
+  async disconnectTikTokAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/tiktok/disconnect', { brandId, socialAccountId });
     return data;
   }
 
@@ -184,8 +197,8 @@ class SocialService {
     return data;
   }
 
-  async getInstagramPublishedPosts(brandId, pageToken = null, limit = 10) {
-    const url = `/social/instagram/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}`;
+  async getInstagramPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const url = `/social/instagram/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
@@ -196,8 +209,8 @@ class SocialService {
     return data;
   }
 
-  async disconnectInstagramAccount(brandId) {
-    const data = await apiV2.post('/social/instagram/disconnect', { brandId });
+  async disconnectInstagramAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/instagram/disconnect', { brandId, socialAccountId });
     return data;
   }
 
@@ -206,13 +219,13 @@ class SocialService {
     return data;
   }
 
-  async disconnectThreadsAccount(brandId) {
-    const data = await apiV2.post('/social/threads/disconnect', { brandId });
+  async disconnectThreadsAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/threads/disconnect', { brandId, socialAccountId });
     return data;
   }
 
-  async getThreadsPublishedPosts(brandId, pageToken = null, limit = 10) {
-    const url = `/social/threads/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}`;
+  async getThreadsPublishedPosts(brandId, pageToken = null, limit = 10, socialAccountId = null) {
+    const url = `/social/threads/published-posts?brandId=${brandId}${pageToken ? `&pageToken=${pageToken}` : ''}${limit ? `&limit=${limit}` : ''}${socialAccountId ? `&socialAccountId=${socialAccountId}` : ''}`;
     const data = await apiV2.get(url);
     return data;
   }
@@ -222,13 +235,18 @@ class SocialService {
     return data;
   }
 
-  async disconnectTelegramAccount(brandId) {
-    const data = await apiV2.post('/social/telegram/disconnect', { brandId });
+  async disconnectTelegramAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/telegram/disconnect', { brandId, socialAccountId });
     return data;
   }
 
   async reassignSocialAccount(platform, platformAccountId, targetBrandId) {
     const data = await apiV2.post('/social/reassign', { platform, platformAccountId, targetBrandId });
+    return data;
+  }
+
+  async setDefaultAccount(brandId, socialAccountId) {
+    const data = await apiV2.post('/social/accounts/set-default', { brandId, socialAccountId });
     return data;
   }
 
@@ -238,8 +256,8 @@ class SocialService {
     return data;
   }
 
-  async disconnectTwitchAccount(brandId) {
-    const data = await apiV2.post('/social/twitch/disconnect', { brandId });
+  async disconnectTwitchAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/twitch/disconnect', { brandId, socialAccountId });
     return data;
   }
 
@@ -249,8 +267,20 @@ class SocialService {
     return data;
   }
 
-  async disconnectBlueskyAccount(brandId) {
-    const data = await apiV2.post('/social/bluesky/disconnect', { brandId });
+  async getBlueskyComments(brandId, { uri, depth = 6, parentHeight = 80, socialAccountId = null } = {}) {
+    const params = new URLSearchParams({
+      brandId,
+      uri,
+      ...(depth ? { depth } : {}),
+      ...(parentHeight ? { parentHeight } : {}),
+      ...(socialAccountId ? { socialAccountId } : {})
+    }).toString();
+    const data = await apiV2.get(`/social/bluesky/comments?${params}`);
+    return data;
+  }
+
+  async disconnectBlueskyAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/bluesky/disconnect', { brandId, socialAccountId });
     return data;
   }
 
@@ -260,8 +290,8 @@ class SocialService {
     return data;
   }
 
-  async disconnectRedditAccount(brandId) {
-    const data = await apiV2.post('/social/reddit/disconnect', { brandId });
+  async disconnectRedditAccount(brandId, socialAccountId = null) {
+    const data = await apiV2.post('/social/reddit/disconnect', { brandId, socialAccountId });
     return data;
   }
 
