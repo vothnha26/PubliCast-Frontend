@@ -14,7 +14,7 @@ import { buildMediaUrl, isVideoPath } from "../utils/url";
 import { validatePostForm } from "../utils/postValidation";
 import { logger } from "../utils/logger";
 import postService from "../services/post.service";
-import { uploadMediaFile } from "../services/mediaUpload.service";
+import { uploadMediaFile, uploadMediaFileWithMetadata } from "../services/mediaUpload.service";
 import {
   NETWORK_TAB_TEMPLATE,
   buildDefaultNetworkCustom,
@@ -50,10 +50,8 @@ export function usePostCreatorForm() {
     setVideoFileUrl,
     isUploadingVideo, 
     setIsUploadingVideo,
-    uploadedVideoPath, 
+    uploadedVideoPath,
     setUploadedVideoPath,
-    albumMedia,
-    setAlbumMedia,
     postMedia,
     setPostMedia,
     backupFormState,
@@ -75,6 +73,19 @@ export function usePostCreatorForm() {
   const [isCreating, setIsCreating] = useState(false);
   const [submitProgressText, setSubmitProgressText] = useState(null);
   const [showMediaViewer, setShowMediaViewer] = useState(false);
+  // Which panel the right column shows: Figma's Templates / AI Assistant /
+  // Preview tab switcher in ComposerHeader and NetworkCustomizeScreen.
+  const [rightPanelTab, setRightPanelTab] = useState("preview");
+  // Fullscreen "Customize post per network" overlay (Figma 4:289) — separate
+  // from isEditByNetwork, which tracks whether any platform actually HAS
+  // custom content (a data concern used by validation/submit/ComposerBody).
+  const [isNetworkCustomizeOpen, setIsNetworkCustomizeOpen] = useState(false);
+  // Checkbox-only for now — handleCreatePost's success path always calls
+  // closePostCreator() unconditionally for new posts; there's no "stay open
+  // and reset" branch to hook this into without changing that shared submit
+  // handler, which is out of scope here. Lifted from NetworkCustomizeScreen's
+  // local state so ComposerFooter can show/toggle the same checkbox.
+  const [createAnother, setCreateAnother] = useState(false);
   const [mediaThumbnailUrl, setMediaThumbnailUrl] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => toLocalDatetimeString(new Date()));
   const [isLibrary, setIsLibrary] = useState(false);
@@ -108,8 +119,6 @@ export function usePostCreatorForm() {
   const [facebookType, setFacebookType] = useState(FACEBOOK_TYPE.POST);
   const [showFacebookTypeMenu, setShowFacebookTypeMenu] = useState(false);
   const [facebookTitle, setFacebookTitle] = useState("");
-  const [facebookReelCollaboratorId, setFacebookReelCollaboratorId] = useState("");
-  const [facebookReelPlaceId, setFacebookReelPlaceId] = useState("");
   const [facebookReelThumbnail, setFacebookReelThumbnail] = useState("");
 
   // YouTube Presets States
@@ -130,6 +139,11 @@ export function usePostCreatorForm() {
   const [isEditByNetwork, setIsEditByNetwork] = useState(false);
   const [activeNetworkTab, setActiveNetworkTab] = useState(NETWORK_TAB_TEMPLATE);
   const [networkCustom, setNetworkCustom] = useState(() => buildDefaultNetworkCustom());
+  // Which account's sub-tab is active within the current network platform
+  // tab, when that platform has ≥2 selected accounts (see NetworkTabSwitcher's
+  // account sub-tabs, mirroring its existing Threads-post sub-tab pattern).
+  // null means "not viewing a specific account" (single-account platform).
+  const [activeNetworkAccountId, setActiveNetworkAccountId] = useState(null);
 
   // Video metadata states for format validation
   const [videoDuration, setVideoDuration] = useState(0);
@@ -145,6 +159,7 @@ export function usePostCreatorForm() {
   const [notes, setNotes] = useState([]);
   const [isLoadingReviewers, setIsLoadingReviewers] = useState(false);
   const [videoSettings, setVideoSettings] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     const backup = restoreFormState();
@@ -175,8 +190,6 @@ export function usePostCreatorForm() {
       setYoutubeType(backup.youtubeType ?? YOUTUBE_TYPE.VIDEO);
       setFacebookType(backup.facebookType ?? FACEBOOK_TYPE.POST);
       setFacebookTitle(backup.facebookTitle ?? "");
-      setFacebookReelCollaboratorId(backup.facebookReelCollaboratorId ?? "");
-      setFacebookReelPlaceId(backup.facebookReelPlaceId ?? "");
       setFacebookReelThumbnail(backup.facebookReelThumbnail ?? "");
       setYoutubeTitle(backup.youtubeTitle ?? "");
       setYoutubeMadeForKids(typeof backup.youtubeMadeForKids === 'boolean' ? backup.youtubeMadeForKids : null);
@@ -190,6 +203,7 @@ export function usePostCreatorForm() {
       setThreadsWhoCanReply(backup.threadsWhoCanReply ?? "everyone");
       setIsEditByNetwork(backup.isEditByNetwork ?? false);
       setActiveNetworkTab(backup.activeNetworkTab ?? NETWORK_TAB_TEMPLATE);
+      setActiveNetworkAccountId(backup.activeNetworkAccountId ?? null);
       setNetworkCustom(backup.networkCustom ?? buildDefaultNetworkCustom());
       setSelectedReviewerId(backup.selectedReviewerId ?? "");
       setSelectedReviewerIds(backup.selectedReviewerIds ?? []);
@@ -224,8 +238,7 @@ export function usePostCreatorForm() {
         defaultVideoPath: currentStoreState.uploadedVideoPath || backup.uploadedVideoPath,
         isUploadingVideo: backup.isUploadingVideo,
         videoSettings: currentStoreState.videoSettings || backup.videoSettings || null,
-        postMedia: updatedPostMedia,
-        albumMedia: backup.albumMedia
+        postMedia: updatedPostMedia
       });
     }
   }, []);
@@ -257,8 +270,6 @@ export function usePostCreatorForm() {
       youtubeType,
       facebookType,
       facebookTitle,
-      facebookReelCollaboratorId,
-      facebookReelPlaceId,
       facebookReelThumbnail,
       youtubeTitle,
       youtubeMadeForKids,
@@ -272,6 +283,7 @@ export function usePostCreatorForm() {
       threadsWhoCanReply,
       isEditByNetwork,
       activeNetworkTab,
+      activeNetworkAccountId,
       networkCustom,
       selectedReviewerId,
       selectedReviewerIds,
@@ -461,12 +473,35 @@ export function usePostCreatorForm() {
     });
   };
 
-  // Bật/tắt chế độ chỉnh nội dung riêng cho 1 nền tảng (Cài đặt theo mạng).
+  // A platform's networkCustom entry either holds content directly
+  // (single-account platforms — unchanged from before) or, when the
+  // platform has ≥2 selected accounts, an entry.perAccount map keyed by
+  // socialAccountId so each account can have its own caption/media instead
+  // of all of them silently sharing entry.caption (composer-audit P0.4).
+  // These two helpers centralize that "read/write the right slot" branch so
+  // toggleUseTemplate/updateNetworkCaption/updateNetworkMedia don't each
+  // duplicate it.
+  const getNetworkEntrySlot = (entry, accountId) => {
+    if (!accountId) return entry || { useTemplate: true, caption: "", mediaUrls: [] };
+    return entry?.perAccount?.[accountId] || { useTemplate: true, caption: "", mediaUrls: [] };
+  };
+
+  const setNetworkEntrySlot = (entry, accountId, slot) => {
+    if (!accountId) return { ...entry, ...slot };
+    return {
+      ...entry,
+      perAccount: { ...(entry?.perAccount || {}), [accountId]: { ...getNetworkEntrySlot(entry, accountId), ...slot } },
+    };
+  };
+
+  // Bật/tắt chế độ chỉnh nội dung riêng cho 1 nền tảng (Cài đặt theo mạng),
+  // hoặc cho 1 account cụ thể trong platform đó khi accountId được truyền.
   // Lần đầu customize (caption/mediaUrls đang rỗng) sẽ seed từ caption/postMedia chung
   // để user không phải gõ lại từ đầu.
-  const toggleUseTemplate = (platformId, value) => {
+  const toggleUseTemplate = (platformId, value, accountId = null) => {
     setNetworkCustom((prev) => {
-      const current = prev[platformId] || { useTemplate: true, caption: "", mediaUrls: [] };
+      const entry = prev[platformId] || { useTemplate: true, caption: "", mediaUrls: [] };
+      const current = getNetworkEntrySlot(entry, accountId);
       const newUseTemplate = value !== undefined ? value : !current.useTemplate;
 
       const isThreads = platformId === PLATFORMS.THREADS;
@@ -477,37 +512,61 @@ export function usePostCreatorForm() {
           : !current.caption) &&
         (current.mediaUrls?.length || 0) === 0;
 
+      const effectiveInitialMedia = (postMedia && postMedia.length > 0)
+        ? [...postMedia]
+        : (videoFileUrl || uploadedVideoPath)
+          ? [{ previewUrl: videoFileUrl, path: uploadedVideoPath, file: videoFile }]
+          : [];
+
       const seeded = isFirstCustomization
         ? isThreads
           ? {
               ...current,
               threadPosts: [
-                { text: caption, mediaUrls: [...postMedia] },
+                { text: caption, mediaUrls: effectiveInitialMedia },
                 ...(Array.isArray(current.threadPosts) ? current.threadPosts.slice(1) : [])
               ]
             }
-          : { ...current, caption }
+          : { ...current, caption, mediaUrls: effectiveInitialMedia }
         : current;
 
       return {
         ...prev,
-        [platformId]: { ...seeded, useTemplate: newUseTemplate },
+        [platformId]: setNetworkEntrySlot(entry, accountId, { ...seeded, useTemplate: newUseTemplate }),
       };
     });
   };
 
-  const updateNetworkCaption = (platformId, value) => {
+  const updateNetworkCaption = (platformId, value, accountId = null) => {
     setNetworkCustom((prev) => ({
       ...prev,
-      [platformId]: { ...(prev[platformId] || { useTemplate: false, caption: "", mediaUrls: [] }), caption: value },
+      [platformId]: setNetworkEntrySlot(prev[platformId], accountId, { useTemplate: false, caption: value }),
     }));
   };
 
-  const updateNetworkMedia = (platformId, mediaUrls) => {
+  const updateNetworkMedia = (platformId, mediaUrls, accountId = null) => {
     setNetworkCustom((prev) => ({
       ...prev,
-      [platformId]: { ...(prev[platformId] || { useTemplate: false, caption: "", mediaUrls: [] }), mediaUrls },
+      [platformId]: setNetworkEntrySlot(prev[platformId], accountId, { useTemplate: false, mediaUrls }),
     }));
+  };
+
+  // Writes one technical-setting field (YouTube categoryId, TikTok
+  // allowDuet, etc.) into the given account's slot — unlike
+  // updateNetworkCaption/updateNetworkMedia, this does NOT force
+  // useTemplate:false, since a user may want a different category for one
+  // account while still sharing the global caption (settings and
+  // caption/media are independent override axes).
+  const updateNetworkSetting = (platformId, key, value, accountId = null) => {
+    setNetworkCustom((prev) => {
+      const entry = prev[platformId];
+      const currentSlot = getNetworkEntrySlot(entry, accountId);
+      const nextSettings = { ...(currentSlot.settings || {}), [key]: value };
+      return {
+        ...prev,
+        [platformId]: setNetworkEntrySlot(entry, accountId, { settings: nextSettings }),
+      };
+    });
   };
 
   const updateThreadPostText = (index, text) => {
@@ -536,11 +595,23 @@ export function usePostCreatorForm() {
 
   const addThreadPost = () => {
     setNetworkCustom((prev) => {
-      const threads = prev[PLATFORMS.THREADS] || { threadPosts: [{ text: "", mediaUrls: [] }] };
-      const newPosts = [...threads.threadPosts, { text: "", mediaUrls: [] }];
+      const threads = prev[PLATFORMS.THREADS];
+      // First time a Threads chain is started (no threadPosts yet), seed
+      // post 1 from the shared caption/media instead of starting blank —
+      // otherwise whatever the user already typed in the shared caption box
+      // silently vanishes the moment they add a second post.
+      const effectiveInitialMedia = (postMedia && postMedia.length > 0)
+        ? [...postMedia]
+        : (videoFileUrl || uploadedVideoPath)
+          ? [{ previewUrl: videoFileUrl, path: uploadedVideoPath, file: videoFile }]
+          : [];
+      const existingPosts = threads?.threadPosts?.length
+        ? threads.threadPosts
+        : [{ text: caption, mediaUrls: effectiveInitialMedia }];
+      const newPosts = [...existingPosts, { text: "", mediaUrls: [] }];
       return {
         ...prev,
-        [PLATFORMS.THREADS]: { ...threads, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
+        [PLATFORMS.THREADS]: { ...threads, useTemplate: false, activeThreadIndex: newPosts.length - 1, threadPosts: newPosts },
       };
     });
   };
@@ -570,6 +641,7 @@ export function usePostCreatorForm() {
 
   const setNetworkTab = (tabId) => {
     setActiveNetworkTab(tabId);
+    setActiveNetworkAccountId(null);
   };
 
   const connectedPlatforms = activeBrand?.socialAccounts
@@ -590,7 +662,6 @@ export function usePostCreatorForm() {
     ?.filter(Boolean) || [];
 
   const getValidationErrors = () => {
-    const isAlbum = selectedPlatforms.includes('facebook') && activePlatform === 'facebook' && facebookType === 'album';
     const activeSelectedPlatforms = selectedPlatforms.filter(p => connectedPlatforms.includes(p));
     return validatePostForm({
       isLibrary,
@@ -607,7 +678,7 @@ export function usePostCreatorForm() {
       videoHeight,
       uploadedVideoPath,
       platformLimits,
-      mediaCount: isAlbum ? albumMedia.length : (postMedia ? postMedia.length : 0),
+      mediaCount: postMedia ? postMedia.length : 0,
       editingPost,
       postMedia,
       captionText: caption,
@@ -734,20 +805,32 @@ export function usePostCreatorForm() {
     }
   };
 
+  // Brands can have multiple YouTube channels connected — without pinning
+  // to the one actually selected in this post, the backend silently fell
+  // back to "whichever YouTube account comes first", so playlists/categories
+  // could load for the wrong channel (or fail entirely if that first
+  // account's token was stale) while the user was targeting a different one.
+  const getSelectedYoutubeAccountId = () => {
+    return activeBrand?.socialAccounts?.find(
+      sa => (sa.platform || '').toUpperCase() === PLATFORMS.YOUTUBE && selectedAccountIds.includes(sa.id)
+    )?.id || null;
+  };
+
   const fetchPlaylists = async (forceRefresh = false) => {
     if (!activeBrand) return;
     setIsLoadingPlaylists(true);
     try {
-      const res = await socialService.getYouTubePlaylists(activeBrand.id, forceRefresh);
+      const res = await socialService.getYouTubePlaylists(activeBrand.id, forceRefresh, getSelectedYoutubeAccountId());
       setPlaylists(res.data || res || []);
       if (forceRefresh) {
         toast.success("YouTube Playlists synchronized successfully");
       }
     } catch (err) {
       logger.error("Failed to load playlists:", err);
-      if (forceRefresh) {
-        toast.error("Failed to synchronize playlists");
-      }
+      // Previously silent unless forceRefresh — an initial-load failure
+      // (e.g. expired YouTube token) left the dropdown empty with no
+      // indication why, indistinguishable from "no playlists exist".
+      toast.error(err.message || "Failed to load YouTube playlists");
     } finally {
       setIsLoadingPlaylists(false);
     }
@@ -757,16 +840,14 @@ export function usePostCreatorForm() {
     if (!activeBrand) return;
     setIsLoadingCategories(true);
     try {
-      const res = await socialService.getYouTubeVideoCategories(activeBrand.id, forceRefresh);
+      const res = await socialService.getYouTubeVideoCategories(activeBrand.id, forceRefresh, getSelectedYoutubeAccountId());
       setCategories(res.data || []);
       if (forceRefresh) {
         toast.success("YouTube Video Categories synchronized successfully");
       }
     } catch (err) {
       logger.error("Failed to load video categories:", err);
-      if (forceRefresh) {
-        toast.error("Failed to synchronize video categories");
-      }
+      toast.error(err.message || "Failed to load YouTube video categories");
     } finally {
       setIsLoadingCategories(false);
     }
@@ -784,6 +865,13 @@ export function usePostCreatorForm() {
           : [DEFAULT_PLATFORM];
         setSelectedPlatforms(loadedPlatforms);
         setActivePlatform(loadedPlatforms[0] || DEFAULT_PLATFORM);
+
+        // Flatten the { [PLATFORM]: string[] } the backend round-trips back
+        // (see _formatPostResponse) into the flat array this hook's state
+        // uses — without this, opening an existing post left the account
+        // picker showing whatever was selected the last time the composer
+        // was open for a *different* post (#composer-audit P0).
+        setSelectedAccountIds(Object.values(editingPost.selectedAccountIds || {}).flat());
 
         setScheduledDate(editingPost.scheduledAt ? toLocalDatetimeString(editingPost.scheduledAt) : toLocalDatetimeString(new Date()));
         setIsLibrary(editingPost.isLibrary || false);
@@ -816,9 +904,14 @@ export function usePostCreatorForm() {
         // Setup Facebook
         setFacebookType(opts.facebookType || "post");
         setFacebookTitle(opts.facebookTitle || "");
-        setFacebookReelCollaboratorId(opts.facebookReelCollaboratorId || "");
-        setFacebookReelPlaceId(opts.facebookReelPlaceId || "");
         setFacebookReelThumbnail(opts.facebookReelThumbnail || "");
+        // mediaThumbnailUrl is the composer's single thumbnail SSoT (see the
+        // "Upload video thumbnail" menu item) — restore it from whichever
+        // per-platform field the post was saved with, so a post edited
+        // after this field existed still shows its thumbnail here.
+        if (!opts.youtubeThumbnail && opts.facebookReelThumbnail) {
+          setMediaThumbnailUrl(opts.facebookReelThumbnail);
+        }
 
         // Setup Instagram
         setInstagramType(opts.instagramType || "post");
@@ -835,9 +928,7 @@ export function usePostCreatorForm() {
         setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
         // Setup media
-        if (opts.facebookType === 'album' && opts.albumMedia) {
-          setAlbumMedia(opts.albumMedia);
-        } else if (editingPost.mediaUrls?.[0]) {
+        if (editingPost.mediaUrls?.[0]) {
           const path = editingPost.mediaUrls[0];
           setUploadedVideoPath(path);
           setVideoFileUrl(buildMediaUrl(path));
@@ -902,9 +993,7 @@ export function usePostCreatorForm() {
         setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
         // Setup media
-        if (opts.facebookType === 'album' && opts.albumMedia) {
-          setAlbumMedia(opts.albumMedia);
-        } else if (templatePost.mediaUrls?.[0]) {
+        if (templatePost.mediaUrls?.[0]) {
           const path = templatePost.mediaUrls[0];
           setUploadedVideoPath(path);
           setVideoFileUrl(buildMediaUrl(path));
@@ -917,7 +1006,14 @@ export function usePostCreatorForm() {
         setCaption("");
         setTitle("");
         
-        const connected = activeBrand?.socialAccounts
+        // selectedPlatforms is a set of PLATFORMS (one entry per platform),
+        // not accounts — a brand with 2 YouTube channels must still produce
+        // a single 'youtube' entry here, or downstream consumers keyed by
+        // platform (NetworkTabSwitcher's tabs, PRESET_REGISTRY rendering in
+        // ComposerBody) get duplicate React keys / duplicate panels for the
+        // same platform. Which specific account(s) are targeted is a
+        // separate concern, tracked by selectedAccountIds.
+        const connected = [...new Set(activeBrand?.socialAccounts
           ?.filter(sa => sa.isConnected)
           ?.map(sa => {
             const mapping = {
@@ -930,12 +1026,16 @@ export function usePostCreatorForm() {
             };
             return mapping[sa.platform];
           })
-          ?.filter(Boolean) || [];
+          ?.filter(Boolean) || [])];
         const initialPlatform = connected.includes(DEFAULT_PLATFORM)
           ? DEFAULT_PLATFORM
           : (connected[0] || DEFAULT_PLATFORM);
 
-        setSelectedPlatforms([initialPlatform]);
+        // Default to every connected platform, not just one — users creating
+        // a new post overwhelmingly intend to cross-post, and a single
+        // pre-selected pill among several unselected ones is easy to miss,
+        // silently under-publishing to just DEFAULT_PLATFORM (YouTube).
+        setSelectedPlatforms(connected.length > 0 ? connected : [initialPlatform]);
         setActivePlatform(initialPlatform);
         setScheduledDate(defaultScheduledAt ? toLocalDatetimeString(defaultScheduledAt) : toLocalDatetimeString(new Date()));
         setIsLibrary(initialIsLibrary || false);
@@ -954,11 +1054,8 @@ export function usePostCreatorForm() {
         // Reset Facebook
         setFacebookType(FACEBOOK_TYPE.POST);
         setFacebookTitle("");
-        setFacebookReelCollaboratorId("");
-        setFacebookReelPlaceId("");
         setFacebookReelThumbnail("");
         setAltText("");
-        setAlbumMedia([]);
         setVideoSettings(null);
 
         // Reset per-platform content override
@@ -1029,9 +1126,7 @@ export function usePostCreatorForm() {
     setTiktokCommercialContent(opts.tiktokCommercialContent || false);
 
     // Setup media
-    if (opts.facebookType === 'album' && opts.albumMedia) {
-      setAlbumMedia(opts.albumMedia);
-    } else if (template.mediaUrls?.[0]) {
+    if (template.mediaUrls?.[0]) {
       const path = template.mediaUrls[0];
       setUploadedVideoPath(path);
       setVideoFileUrl(buildMediaUrl(path));
@@ -1060,7 +1155,6 @@ export function usePostCreatorForm() {
     try {
       // 1. Quét và tập hợp tất cả các file media chưa upload (has file && !path)
       const pendingPostMedia = postMedia.filter((item) => item.file && !item.path);
-      const pendingAlbumMedia = albumMedia.filter((item) => item.file && !item.path);
       const pendingNetworkItems = [];
 
       Object.entries(networkCustom).forEach(([platform, entry]) => {
@@ -1088,7 +1182,7 @@ export function usePostCreatorForm() {
         }
       });
 
-      const allPendingFiles = [...pendingPostMedia, ...pendingAlbumMedia, ...pendingNetworkItems];
+      const allPendingFiles = [...pendingPostMedia, ...pendingNetworkItems];
       const totalPending = allPendingFiles.length;
 
       if (totalPending > 0) {
@@ -1097,8 +1191,19 @@ export function usePostCreatorForm() {
           uploadedCount++;
           setSubmitProgressText(`Đang tải lên file ${uploadedCount}/${totalPending}...`);
           try {
-            const uploadedUrl = await uploadMediaFile(item.file, activeBrand.id);
+            // Cloudinary's own upload response already carries width/height/
+            // duration/frame rate/codec for videos — read from it here
+            // instead of a separate probe pass, since this request happens
+            // regardless of whether anything reads the extra fields.
+            const uploadResult = await uploadMediaFileWithMetadata(item.file, activeBrand.id);
+            const uploadedUrl = uploadResult.url;
             item.path = uploadedUrl;
+            if (item.file?.type?.startsWith('video/')) {
+              item.width = uploadResult.width;
+              item.height = uploadResult.height;
+              item.frameRate = uploadResult.frameRate;
+              item.codec = uploadResult.codec;
+            }
 
             // Track asset immediately upon successful upload to allow rollback if subsequent uploads fail
             const trackUploadedAsset = usePostCreatorStore.getState().trackUploadedAsset;
@@ -1116,7 +1221,6 @@ export function usePostCreatorForm() {
         }
 
         setPostMedia([...postMedia]);
-        setAlbumMedia([...albumMedia]);
         setNetworkCustom({ ...networkCustom });
       }
 
@@ -1131,26 +1235,46 @@ export function usePostCreatorForm() {
       else if (activePlatform === PLATFORMS.INSTAGRAM) activeSubType = instagramType;
       else if (activePlatform === PLATFORMS.TIKTOK) activeSubType = 'video';
 
-      const isAlbum = activePlatform === PLATFORMS.FACEBOOK && facebookType === 'album';
       const effectiveUploadedPath = uploadedVideoPath || (postMedia.length > 0 ? postMedia[0].path : "");
-      const hasMedia = isAlbum ? albumMedia.length > 0 : !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && postMedia[0].path));
-      const isVid = !isAlbum && isVideoPath(videoFileUrl, videoFile);
+      const hasMedia = !!(effectiveUploadedPath || (postMedia && postMedia.length > 0 && postMedia[0].path));
+      const isVid = isVideoPath(videoFileUrl, videoFile);
 
       const platformConfig = PLATFORM_CONFIGS[activePlatform];
-      const postType = platformConfig 
+      const postType = platformConfig
         ? platformConfig.getPostType(activeSubType, hasMedia, isVid)
         : POST_TYPE.VIDEO;
 
-      // Chuẩn bị danh sách URLs và captions cho Album hoặc Post
-      const postMediaUrls = isAlbum 
-        ? albumMedia.map(item => item.path).filter(Boolean)
-        : (postMedia && postMedia.length > 0
-            ? postMedia.map(item => item.path).filter(Boolean)
-            : (effectiveUploadedPath ? [effectiveUploadedPath] : [])
-          );
-      const mediaCaptions = isAlbum
-        ? albumMedia.map(item => item.caption || "")
-        : [];
+      // Captions built alongside their URLs (not filtered separately) so an
+      // item with no path doesn't shift mediaCaptions[i] out of sync with
+      // postMediaUrls[i] (AlbumPublishStrategy matches them by index).
+      // postMedia's per-item caption is written by AltTextModal (see
+      // PostCreator.jsx's onSave) — ≥2 photos here auto-routes to Facebook's
+      // album strategy server-side (facebook-post.service.js), no separate
+      // "Album" post type needed anymore.
+      let postMediaUrls;
+      let mediaCaptions;
+      if (postMedia && postMedia.length > 0) {
+        const validItems = postMedia.filter(item => item.path);
+        postMediaUrls = validItems.map(item => item.path);
+        mediaCaptions = validItems.map(item => item.caption || "");
+      } else {
+        postMediaUrls = effectiveUploadedPath ? [effectiveUploadedPath] : [];
+        mediaCaptions = [];
+      }
+
+      // Groups the flat selectedAccountIds by platform into the shape
+      // upsertPostTargets expects ({ [PLATFORM]: string[] }) — without this,
+      // the account picker's choice never reached the backend and every
+      // post silently fell back to each platform's default/earliest-connected
+      // account, ignoring which specific channel the user picked (#composer-audit P0).
+      const selectedAccountIdsByPlatform = {};
+      (activeBrand?.socialAccounts || []).forEach(sa => {
+        if (!selectedAccountIds.includes(sa.id)) return;
+        const platformKey = (sa.platform || '').toUpperCase();
+        if (!platformKey) return;
+        if (!selectedAccountIdsByPlatform[platformKey]) selectedAccountIdsByPlatform[platformKey] = [];
+        selectedAccountIdsByPlatform[platformKey].push(sa.id);
+      });
 
       const payload = {
         brandId: activeBrand.id,
@@ -1161,6 +1285,7 @@ export function usePostCreatorForm() {
         isLibrary,
         altText,
         targetPlatforms: selectedPlatforms.filter(p => connectedPlatforms.includes(p)).map(p => p.toUpperCase()),
+        selectedAccountIds: selectedAccountIdsByPlatform,
         scheduledAt: ['schedule', 'review'].includes(selectedPublishId) ? (scheduledDate ? new Date(scheduledDate).toISOString() : null) : null,
         mediaUrls: postMediaUrls,
         mediaThumbnailUrls: mediaThumbnailUrl ? [mediaThumbnailUrl] : [],
@@ -1168,6 +1293,15 @@ export function usePostCreatorForm() {
         approvalPolicy: approvalPolicy,
         requesterNote: requesterNote || "Vui lòng phê duyệt bài viết này.",
         options: {
+          // From the browser's own <video> element (free, measured before
+          // upload — see the videoFileUrl-driven effect that sets these) or,
+          // for width/frameRate, from Cloudinary's upload response captured
+          // on postMedia[0] just above (frameRate has no browser API
+          // equivalent, so Cloudinary is the only source for it here).
+          videoDuration,
+          videoWidth: postMedia[0]?.width || videoWidth,
+          videoHeight: postMedia[0]?.height || videoHeight,
+          videoFrameRate: postMedia[0]?.frameRate || null,
           youtubeType,
           youtubeTitle,
           privacyStatus: youtubePrivacy,
@@ -1176,13 +1310,13 @@ export function usePostCreatorForm() {
           tags: youtubeTags,
           madeForKids: youtubeMadeForKids,
           firstComment: youtubeFirstComment || globalFirstComment,
-          // mediaThumbnailUrl làm SSoT cho thumbnail, nối dây cho cả YouTube và Facebook Reel
+          // mediaThumbnailUrl ("Upload video thumbnail" trong media 3-dot
+          // menu) là SSoT duy nhất cho thumbnail — dùng chung cho cả YouTube
+          // và Facebook Reel, không còn ô "Custom Thumbnail URL" riêng nữa.
           youtubeThumbnail: mediaThumbnailUrl || youtubeThumbnail,
           facebookType,
           facebookTitle,
-          facebookReelCollaboratorId,
-          facebookReelPlaceId,
-          facebookReelThumbnail: mediaThumbnailUrl || facebookReelThumbnail,
+          facebookReelThumbnail: mediaThumbnailUrl,
           instagramType,
           instagramCollaborators,
           instagramAudio,
@@ -1193,7 +1327,6 @@ export function usePostCreatorForm() {
           tiktokAllowStitch,
           tiktokAiGenerated,
           tiktokCommercialContent,
-          albumMedia,
           mediaCaptions,
           threadsWhoCanReply,
           useUrlShortener,
@@ -1202,11 +1335,14 @@ export function usePostCreatorForm() {
         }
       };
 
+      const formatOverrideMediaUrls = (mediaUrls) => (mediaUrls || [])
+        .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
+        .filter(Boolean);
+
       const buildNetworkOverrides = () => {
         const overrides = [];
         Object.entries(networkCustom).forEach(([platform, entry]) => {
           if (!selectedPlatforms.includes(platform)) return;
-          if (entry?.useTemplate !== false) return;
           const apiKey = PLATFORM_API_KEY[platform];
           if (!apiKey) return; // bỏ qua platform không có API key hợp lệ
 
@@ -1214,69 +1350,146 @@ export function usePostCreatorForm() {
             sa => (sa.platform || '').toLowerCase() === apiKey.toLowerCase() && selectedAccountIds.includes(sa.id)
           ) || [];
 
+          // Settings (YouTube category/privacy/tags, TikTok duet/stitch,
+          // etc.) are an independent override axis from caption/media —
+          // updateNetworkSetting deliberately doesn't flip useTemplate, so a
+          // user can give one account a different category while every
+          // account still shares the global caption. Both this and the
+          // useTemplate!==false check below gate whether an override row is
+          // written for a given account.
+          const hasAnySettingsFor = (accountId) => {
+            const slot = accountId ? entry.perAccount?.[accountId] : entry;
+            return slot?.settings && Object.keys(slot.settings).length > 0;
+          };
+          // entry.useTemplate is the SINGLE-account flag (setNetworkEntrySlot
+          // only ever writes it when accountId is falsy) — on a platform with
+          // ≥2 targeted accounts, per-account customization lives in
+          // entry.perAccount[accId].useTemplate instead and never touches
+          // entry.useTemplate at all. Checking only entry.useTemplate here
+          // meant every per-account customization on a multi-account platform
+          // was silently skipped (this whole platform returned before ever
+          // building an override row for it) — the composer's own UI wrote
+          // the caption fine, it just never made it into the payload.
+          const hasAnyCaptionCustomizedFor = (accountId) => {
+            const slot = accountId ? entry.perAccount?.[accountId] : entry;
+            return slot?.useTemplate === false;
+          };
+          const isThreadsWithChain = platform === PLATFORMS.THREADS && (entry?.threadPosts?.length || 0) > 0;
+          if (
+            !isThreadsWithChain &&
+            !hasAnyCaptionCustomizedFor(null) &&
+            accountsForPlatform.every((acc) => !hasAnyCaptionCustomizedFor(acc.id) && !hasAnySettingsFor(acc.id)) &&
+            !hasAnySettingsFor(null)
+          ) {
+            return;
+          }
+
+          // With ≥2 accounts, each may have its own perAccount slot (see
+          // getNetworkEntrySlot) — falls back to the shared `entry` for any
+          // account that was never individually customized, so turning on
+          // "Theo mạng" for a platform still seeds every account with
+          // something instead of an empty override (composer-audit P0.4).
+          const effectiveEntryFor = (accountId) =>
+            accountsForPlatform.length > 1 && entry.perAccount?.[accountId]
+              ? entry.perAccount[accountId]
+              : entry;
+
           const formattedMediaUrls = (entry.mediaUrls || [])
             .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
             .filter(Boolean);
 
           if (platform === PLATFORMS.THREADS) {
-            const validPosts = (entry.threadPosts || []).filter((p) => {
+            const getValidPosts = (e) => (e.threadPosts || []).filter((p) => {
               const txt = typeof p === 'string' ? p : p?.text;
               const media = typeof p === 'string' ? [] : (p?.mediaUrls || []);
               return (txt && txt.trim()) || media.length > 0;
             });
-            if (validPosts.length === 0) return;
-            const formatPostMedia = (mediaUrls) => (mediaUrls || [])
-              .map((item) => (typeof item === 'string' ? item : item.path || item.previewUrl))
-              .filter(Boolean);
-
-            const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
-            const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
 
             if (accountsForPlatform.length > 0) {
               accountsForPlatform.forEach((acc) => {
+                const accEntry = effectiveEntryFor(acc.id);
+                const validPosts = getValidPosts(accEntry);
+                if (validPosts.length === 0) return;
+                const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
+                const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
                 overrides.push({
                   platform: apiKey,
                   socialAccountId: acc.id,
                   useTemplate: false,
                   caption: firstPostText,
-                  mediaUrls: formatPostMedia(firstPostMedia),
+                  mediaUrls: formatOverrideMediaUrls(firstPostMedia),
                   threadPosts: validPosts.map((p) => ({
                     text: typeof p === 'string' ? p : (p.text || ''),
-                    mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
+                    mediaUrls: formatOverrideMediaUrls(typeof p === 'string' ? [] : p.mediaUrls),
                   })),
                 });
               });
             } else {
+              const validPosts = getValidPosts(entry);
+              if (validPosts.length === 0) return;
+              const firstPostText = typeof validPosts[0] === 'string' ? validPosts[0] : (validPosts[0].text || '');
+              const firstPostMedia = typeof validPosts[0] === 'string' ? [] : (validPosts[0].mediaUrls || []);
               overrides.push({
                 platform: apiKey,
                 useTemplate: false,
                 caption: firstPostText,
-                mediaUrls: formatPostMedia(firstPostMedia),
+                mediaUrls: formatOverrideMediaUrls(firstPostMedia),
                 threadPosts: validPosts.map((p) => ({
                   text: typeof p === 'string' ? p : (p.text || ''),
-                  mediaUrls: formatPostMedia(typeof p === 'string' ? [] : p.mediaUrls),
+                  mediaUrls: formatOverrideMediaUrls(typeof p === 'string' ? [] : p.mediaUrls),
                 })),
               });
             }
           } else {
-            if (!entry.caption && formattedMediaUrls.length === 0) return;
             if (accountsForPlatform.length > 0) {
               accountsForPlatform.forEach((acc) => {
+                const accEntry = effectiveEntryFor(acc.id);
+                const accMediaUrls = formatOverrideMediaUrls(accEntry.mediaUrls);
+                // Settings live on this account's own perAccount slot, never
+                // inherited via effectiveEntryFor's shared-content fallback —
+                // a category chosen for account A must never silently apply
+                // to account B just because B hasn't customized its caption yet.
+                const accSettings = entry.perAccount?.[acc.id]?.settings;
+                const hasSettings = accSettings && Object.keys(accSettings).length > 0;
+                const isCaptionCustomized = accEntry.useTemplate === false;
+                if (!isCaptionCustomized && !hasSettings) return;
+                if (isCaptionCustomized && !accEntry.caption && accMediaUrls.length === 0 && !hasSettings) return;
                 overrides.push({
                   platform: apiKey,
                   socialAccountId: acc.id,
-                  useTemplate: false,
-                  caption: entry.caption || '',
-                  mediaUrls: formattedMediaUrls,
+                  // useTemplate here means the SAME thing backend expects
+                  // (social-publish.step.js: useOverride = override.useTemplate
+                  // === false) — false = "this account has its own
+                  // caption/media, don't fall back to the shared post". It was
+                  // previously sent as `isCaptionCustomized` itself (true when
+                  // customized), the exact inverse of what the backend checks
+                  // for, so every per-account customization on a multi-account
+                  // platform silently published the shared caption instead.
+                  useTemplate: !isCaptionCustomized,
+                  caption: isCaptionCustomized ? (accEntry.caption || '') : undefined,
+                  mediaUrls: isCaptionCustomized ? accMediaUrls : undefined,
+                  ...(hasSettings ? { settings: accSettings } : {}),
                 });
               });
             } else {
-              overrides.push({
-                platform: apiKey,
-                useTemplate: false,
-                caption: entry.caption || '',
-                mediaUrls: formattedMediaUrls,
-              });
+              const singleSettings = entry.settings;
+              const hasSettings = singleSettings && Object.keys(singleSettings).length > 0;
+              if (entry?.useTemplate === false) {
+                if (!entry.caption && formattedMediaUrls.length === 0 && !hasSettings) return;
+                overrides.push({
+                  platform: apiKey,
+                  useTemplate: false,
+                  caption: entry.caption || '',
+                  mediaUrls: formattedMediaUrls,
+                  ...(hasSettings ? { settings: singleSettings } : {}),
+                });
+              } else if (hasSettings) {
+                overrides.push({
+                  platform: apiKey,
+                  useTemplate: true,
+                  settings: singleSettings,
+                });
+              }
             }
           }
         });
@@ -1323,8 +1536,6 @@ export function usePostCreatorForm() {
         setMediaThumbnailUrl("");
         setFacebookTitle("");
         setFacebookType(FACEBOOK_TYPE.POST);
-        setFacebookReelCollaboratorId("");
-        setFacebookReelPlaceId("");
         setFacebookReelThumbnail("");
         setInstagramType(INSTAGRAM_TYPE.POST);
         setInstagramCollaborators([]);
@@ -1462,10 +1673,6 @@ export function usePostCreatorForm() {
     setShowFacebookTypeMenu,
     facebookTitle,
     setFacebookTitle,
-    facebookReelCollaboratorId,
-    setFacebookReelCollaboratorId,
-    facebookReelPlaceId,
-    setFacebookReelPlaceId,
     facebookReelThumbnail,
     setFacebookReelThumbnail,
     // Instagram States
@@ -1511,8 +1718,6 @@ export function usePostCreatorForm() {
     requesterNote,
     setRequesterNote,
     isLoadingReviewers,
-    albumMedia,
-    setAlbumMedia,
     postMedia,
     setPostMedia,
     // Threads States
@@ -1523,10 +1728,13 @@ export function usePostCreatorForm() {
     setIsEditByNetwork,
     activeNetworkTab,
     setNetworkTab,
+    activeNetworkAccountId,
+    setActiveNetworkAccountId,
     networkCustom,
     toggleUseTemplate,
     updateNetworkCaption,
     updateNetworkMedia,
+    updateNetworkSetting,
     updateThreadPostText,
     updateThreadPostMedia,
     addThreadPost,
@@ -1542,6 +1750,14 @@ export function usePostCreatorForm() {
     setMediaThumbnailUrl,
     getBackupPayload,
     backupFormState,
-    closePostCreatorTemporarily
+    closePostCreatorTemporarily,
+    rightPanelTab,
+    setRightPanelTab,
+    isNetworkCustomizeOpen,
+    setIsNetworkCustomizeOpen,
+    createAnother,
+    setCreateAnother,
+    isFullScreen,
+    setIsFullScreen
   };
 }

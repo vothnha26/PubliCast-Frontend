@@ -4,17 +4,31 @@
  * Eliminates all magic strings and hardcoded literals.
  */
 
+// Facebook Reel/Story duration+resolution+frameRate limits are meant to
+// match the backend's copy (backend/src/config/facebook-reel.constants.js,
+// which reads the canonical PubliCast/shared/facebook-limits.json) so the
+// two validators can't drift apart — this is what caused the Story
+// max-duration bug (frontend hardcoded 15s, the real Meta limit is 60s,
+// backend already had it right). This is a local copy, not an import of the
+// monorepo-root shared/ file: the frontend now builds as a standalone repo
+// (publicast-frontend) with no access to files outside this directory. Keep
+// both copies in sync by hand when Meta's limits change.
+import facebookLimits from './facebook-limits.json';
+
 export const PLATFORM_LIMIT_THRESHOLDS = {
   FACEBOOK: {
     ALBUM_MIN_MEDIA: 2,
-    REEL_MIN_DURATION: 3,
-    REEL_MAX_DURATION: 90,
-    STORY_MAX_DURATION: 15
+    REEL_MIN_DURATION: facebookLimits.REEL.MIN_DURATION_SECONDS,
+    REEL_MAX_DURATION: facebookLimits.REEL.MAX_DURATION_SECONDS,
+    STORY_MAX_DURATION: facebookLimits.STORY.MAX_DURATION_SECONDS
   },
   INSTAGRAM: {
     REEL_MIN_DURATION: 3,
     REEL_MAX_DURATION: 900,
-    STORY_MAX_DURATION: 15
+    STORY_MAX_DURATION: 15,
+    // Meta's Content Publishing docs: "Carousels are limited to 10 images,
+    // videos, or a mix of the two."
+    CAROUSEL_MAX_MEDIA: 10
   },
   YOUTUBE: {
     TITLE_MAX_LENGTH: 100,
@@ -67,7 +81,8 @@ export const PLATFORM_VALIDATION_MESSAGES = {
     REEL_DURATION_RANGE: (duration) => `Instagram Reels must be between ${PLATFORM_LIMIT_THRESHOLDS.INSTAGRAM.REEL_MIN_DURATION} seconds and 15 minutes. (Current: ${Number(duration).toFixed(1)}s)`,
     REEL_MUST_BE_VERTICAL: "Instagram Reels must be vertical (9:16 aspect ratio).",
     STORY_MAX_DURATION: (duration) => `Instagram Story videos should be ${PLATFORM_LIMIT_THRESHOLDS.INSTAGRAM.STORY_MAX_DURATION} seconds or less. (Current: ${Number(duration).toFixed(1)}s)`,
-    STORY_MUST_BE_VERTICAL: "Instagram Story videos should be vertical (9:16 aspect ratio)."
+    STORY_MUST_BE_VERTICAL: "Instagram Story videos should be vertical (9:16 aspect ratio).",
+    CAROUSEL_MAX_MEDIA: (count) => `Instagram carousel posts support a maximum of ${PLATFORM_LIMIT_THRESHOLDS.INSTAGRAM.CAROUSEL_MAX_MEDIA} images/videos. (Current: ${count})`
   },
 
   YOUTUBE: {
@@ -172,6 +187,10 @@ export const VALIDATION_RULES = {
     STORY_MAX_DURATION: {
       check: ({ isVideo, videoDuration }) => isVideo && videoDuration > PLATFORM_LIMIT_THRESHOLDS.INSTAGRAM.STORY_MAX_DURATION,
       message: ({ videoDuration }) => PLATFORM_VALIDATION_MESSAGES.INSTAGRAM.STORY_MAX_DURATION(videoDuration)
+    },
+    CAROUSEL_MAX_MEDIA: {
+      check: ({ mediaCount }) => mediaCount > PLATFORM_LIMIT_THRESHOLDS.INSTAGRAM.CAROUSEL_MAX_MEDIA,
+      message: ({ mediaCount }) => PLATFORM_VALIDATION_MESSAGES.INSTAGRAM.CAROUSEL_MAX_MEDIA(mediaCount)
     },
     STORY_MUST_BE_VERTICAL: {
       check: ({ isVideo, videoWidth, videoHeight }) => isVideo && isHorizontalOrSquareVideo(videoWidth, videoHeight),
