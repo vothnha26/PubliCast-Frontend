@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Youtube, ChevronDown, RotateCw, Copy } from "lucide-react";
 import { usePostCreatorFormContext } from "../../../../context/PostCreatorFormContext";
 import { toast } from "sonner";
+import { PLATFORMS } from "../../../../constants/platforms";
 
 const FALLBACK_CATEGORIES = [
   { id: "22", title: "People & Blogs" },
@@ -38,15 +39,66 @@ export function YouTubePresets() {
     fetchPlaylists,
     categories,
     isLoadingCategories,
-    fetchCategories
+    fetchCategories,
+    selectedAccountIds,
+    activeBrand,
+    networkCustom,
+    activeNetworkAccountId,
+    updateNetworkSetting
   } = usePostCreatorFormContext();
+
+  // A YouTube channel's technical settings (category/privacy/tags/madeForKids)
+  // are per-account when the brand has ≥2 YouTube channels targeted — read
+  // from/write into networkCustom.youtube.perAccount[accountId].settings
+  // instead of the flat state, mirroring how caption/media already work
+  // (composer-audit P0.4 / SRS FR-3.4). With exactly one account, or no
+  // sub-tab selected yet, the flat state below remains the effective value —
+  // it also still doubles as the "shared/global default" every account seeds
+  // from on first customization.
+  const youtubeAccounts = (activeBrand?.socialAccounts || []).filter(
+    sa => (sa.platform || '').toUpperCase() === PLATFORMS.YOUTUBE.toUpperCase() && selectedAccountIds.includes(sa.id)
+  );
+  const hasAccountSettings = youtubeAccounts.length > 1 && !!activeNetworkAccountId;
+  const accountSettings = hasAccountSettings
+    ? (networkCustom?.[PLATFORMS.YOUTUBE]?.perAccount?.[activeNetworkAccountId]?.settings || {})
+    : null;
+
+  const effectiveCategory = hasAccountSettings && accountSettings.categoryId !== undefined ? accountSettings.categoryId : youtubeCategory;
+  const effectivePrivacy = hasAccountSettings && accountSettings.privacyStatus !== undefined ? accountSettings.privacyStatus : youtubePrivacy;
+  const effectiveTags = hasAccountSettings && accountSettings.tags !== undefined ? accountSettings.tags : youtubeTags;
+  const effectiveMadeForKids = hasAccountSettings && accountSettings.madeForKids !== undefined ? accountSettings.madeForKids : youtubeMadeForKids;
+
+  const handleSettingChange = (key, flatSetter, value) => {
+    if (hasAccountSettings) {
+      updateNetworkSetting(PLATFORMS.YOUTUBE, key, value, activeNetworkAccountId);
+    } else {
+      flatSetter(value);
+    }
+  };
+
+  // A playlist belongs to exactly one YouTube channel — with ≥2 channels
+  // targeted, options.playlistId (a single value for the whole post) would
+  // get sent as-is to every channel's publish call, adding the video to a
+  // playlist it doesn't own (silently fails or errors per-channel). Simplest
+  // correct behavior until playlist selection is modeled per-channel: only
+  // offer it when there's exactly one YouTube channel to disambiguate.
+  const selectedYoutubeAccountCount = youtubeAccounts.length;
+  const canPickPlaylist = selectedYoutubeAccountCount <= 1;
 
   useEffect(() => {
     if (youtubeOpen) {
-      fetchPlaylists();
+      if (canPickPlaylist) fetchPlaylists();
       fetchCategories();
     }
-  }, [youtubeOpen]);
+  }, [youtubeOpen, canPickPlaylist]);
+
+  // Clears a stale selection made while only one channel was targeted, so
+  // a since-added second channel can't inherit a playlist it doesn't own.
+  useEffect(() => {
+    if (!canPickPlaylist && youtubePlaylistId) {
+      setYoutubePlaylistId("");
+    }
+  }, [canPickPlaylist]);
 
   const displayCategories = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES;
 
@@ -67,7 +119,7 @@ export function YouTubePresets() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-left">
           
           {/* Video or Short Title */}
-          <div>
+          <div className="col-span-2">
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.videoTitleLabel")}</label>
             <div className="relative">
               <input 
@@ -88,12 +140,12 @@ export function YouTubePresets() {
           <div>
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.audienceLabel")}</label>
             <div className="relative">
-              <select 
-                value={typeof youtubeMadeForKids === "boolean" ? (youtubeMadeForKids ? "true" : "false") : ""}
-                onChange={(e) => setYoutubeMadeForKids(e.target.value === "" ? null : e.target.value === "true")}
+              <select
+                value={typeof effectiveMadeForKids === "boolean" ? (effectiveMadeForKids ? "true" : "false") : ""}
+                onChange={(e) => handleSettingChange('madeForKids', setYoutubeMadeForKids, e.target.value === "" ? null : e.target.value === "true")}
                 className={`w-full px-4 py-3 bg-card border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans transition-all ${
-                  youtubeMadeForKids === null 
-                    ? "border-amber-300 bg-amber-50/20 text-amber-900 font-bold" 
+                  effectiveMadeForKids === null
+                    ? "border-amber-300 bg-amber-50/20 text-amber-900 font-bold"
                     : "border-border text-foreground"
                 }`}
               >
@@ -109,9 +161,9 @@ export function YouTubePresets() {
           <div>
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.privacyLabel")}</label>
             <div className="relative">
-              <select 
-                value={youtubePrivacy}
-                onChange={(e) => setYoutubePrivacy(e.target.value)}
+              <select
+                value={effectivePrivacy}
+                onChange={(e) => handleSettingChange('privacyStatus', setYoutubePrivacy, e.target.value)}
                 className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
               >
                 <option value="public">{t("planner:postCreator.presets.youtube.public")}</option>
@@ -130,9 +182,9 @@ export function YouTubePresets() {
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.categoryLabel")}</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <select 
-                  value={youtubeCategory}
-                  onChange={(e) => setYoutubeCategory(e.target.value)}
+                <select
+                  value={effectiveCategory}
+                  onChange={(e) => handleSettingChange('categoryId', setYoutubeCategory, e.target.value)}
                   className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
                 >
                   {displayCategories.map(cat => (
@@ -151,48 +203,56 @@ export function YouTubePresets() {
             </div>
           </div>
 
-          {/* Add to playlist */}
-          <div>
-            <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.playlistLabel")}</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <select 
-                  value={youtubePlaylistId}
-                  onChange={(e) => setYoutubePlaylistId(e.target.value)}
-                  className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+          {/* Add to playlist — hidden when targeting multiple YouTube
+              channels, since a playlist belongs to one specific channel and
+              there's no per-channel playlist picker yet. */}
+          {canPickPlaylist ? (
+            <div>
+              <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.playlistLabel")}</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <select
+                    value={youtubePlaylistId}
+                    onChange={(e) => setYoutubePlaylistId(e.target.value)}
+                    className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none appearance-none cursor-pointer font-sans"
+                  >
+                    <option value="">{t("planner:postCreator.presets.youtube.selectPlaylist")}</option>
+                    {playlists.map(pl => (
+                      <option key={pl.id} value={pl.id}>{pl.title}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fetchPlaylists(true)}
+                  className="p-3 bg-muted hover:bg-muted rounded-2xl border border-border text-muted-foreground hover:text-black transition-all flex items-center justify-center shrink-0 cursor-pointer"
                 >
-                  <option value="">{t("planner:postCreator.presets.youtube.selectPlaylist")}</option>
-                  {playlists.map(pl => (
-                    <option key={pl.id} value={pl.id}>{pl.title}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <RotateCw size={14} className={isLoadingPlaylists ? "animate-spin" : ""} />
+                </button>
               </div>
-              <button 
-                type="button"
-                onClick={() => fetchPlaylists(true)}
-                className="p-3 bg-muted hover:bg-muted rounded-2xl border border-border text-muted-foreground hover:text-black transition-all flex items-center justify-center shrink-0 cursor-pointer"
-              >
-                <RotateCw size={14} className={isLoadingPlaylists ? "animate-spin" : ""} />
-              </button>
             </div>
-          </div>
+          ) : (
+            <div className="px-4 py-3 bg-muted/50 border border-border rounded-2xl text-[11px] text-muted-foreground font-sans">
+              {t("planner:postCreator.presets.youtube.playlistUnavailableMultiChannel", "Playlist không khả dụng khi đăng cùng lúc lên nhiều kênh YouTube.")}
+            </div>
+          )}
 
           {/* Tags */}
           <div>
             <label className="block text-[11px] font-bold text-muted-foreground uppercase mb-2 font-sans">{t("planner:postCreator.presets.youtube.tagsLabel")}</label>
             <div className="flex gap-2">
-              <input 
+              <input
                 type="text"
-                value={youtubeTags}
-                onChange={(e) => setYoutubeTags(e.target.value)}
+                value={effectiveTags}
+                onChange={(e) => handleSettingChange('tags', setYoutubeTags, e.target.value)}
                 placeholder={t("planner:postCreator.presets.youtube.tagsPlaceholder")}
                 className="w-full px-4 py-3 bg-card border border-border rounded-2xl text-xs font-semibold focus:border-black outline-none font-sans"
               />
-              <button 
+              <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(youtubeTags);
+                  navigator.clipboard.writeText(effectiveTags);
                   toast.success(t("planner:postCreator.presets.youtube.tagsCopied"));
                 }}
                 className="p-3 bg-muted hover:bg-muted rounded-2xl border border-border text-muted-foreground hover:text-black transition-all flex items-center justify-center shrink-0 cursor-pointer"
