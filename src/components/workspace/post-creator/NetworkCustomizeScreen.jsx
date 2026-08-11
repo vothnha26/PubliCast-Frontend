@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft, Calendar, AlertCircle, Plus,
@@ -24,6 +24,7 @@ import { MEDIA_FILTER_TYPES } from "../../../constants/mediaAcceptStrategy";
 import { PLATFORMS } from "../../../constants/platforms";
 import { MediaThumbnailGrid } from "./MediaThumbnailGrid";
 import { ShortsIcon } from "./ShortsIcon";
+import { useClickOutside } from "../../../hooks/useClickOutside";
 
 /**
  * Fullscreen "Customize post per network" overlay (Figma 4:289-4:512).
@@ -42,6 +43,7 @@ export function NetworkCustomizeScreen({ onClose }) {
     toggleAccount,
     activeNetworkTab,
     setNetworkTab,
+    setActiveNetworkTab,
     activeNetworkAccountId,
     setActiveNetworkAccountId,
     networkCustom,
@@ -86,6 +88,8 @@ export function NetworkCustomizeScreen({ onClose }) {
   const [activePopover, setActivePopover] = useState(null);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showChannelPicker, setShowChannelPicker] = useState(false);
+  const closeTypeDropdown = useCallback(() => setShowTypeDropdown(false), []);
+  const typeDropdownRef = useClickOutside(showTypeDropdown, closeTypeDropdown);
 
   // Flat list of tabs — one per connected+targeted CHANNEL (account), not
   // one per platform. A brand with 2 TikTok accounts selected gets 2 tabs,
@@ -111,15 +115,6 @@ export function NetworkCustomizeScreen({ onClose }) {
     || null;
   const activePlatform = activeChannel?.platform;
 
-  const applyCustomModeFor = (channel) => {
-    const accountId = isMultiAccountPlatform(channel.platform) ? channel.accountId : null;
-    const entry = networkCustom[channel.platform];
-    const slot = accountId ? entry?.perAccount?.[accountId] : entry;
-    if (slot?.useTemplate !== false) {
-      toggleUseTemplate(channel.platform, true, accountId);
-    }
-  };
-
   // Land on the first targeted channel when this screen opens, since
   // Figma's per-network screen has no "shared" tab. Does NOT touch the
   // composer's own "Theo mạng" toggle (isEditByNetwork) — that's a
@@ -129,17 +124,14 @@ export function NetworkCustomizeScreen({ onClose }) {
   // right per-network slot without mutating that toggle.
   useEffect(() => {
     if (!activeChannel) return;
-    // setNetworkTab resets activeNetworkAccountId as a side effect — call it
-    // first so the account id set right after actually sticks.
     if (activeNetworkTab !== activeChannel.platform) {
-      setNetworkTab(activeChannel.platform);
+      setActiveNetworkTab(activeChannel.platform);
     }
     if (activeNetworkAccountId !== activeChannel.accountId) {
       setActiveNetworkAccountId(activeChannel.accountId);
     }
     setActivePlatform(activeChannel.platform);
-    applyCustomModeFor(activeChannel);
-  }, []);
+  }, [channelTabs]);
 
   // The top-right "X" (and Escape) exit the whole Post Creator, not just
   // this overlay — unlike the back-arrow, which only returns to the main
@@ -175,16 +167,11 @@ export function NetworkCustomizeScreen({ onClose }) {
   }, []);
 
   const handleSelectChannel = (channel) => {
-    // setNetworkTab (the shared wrapper in usePostCreatorForm) always resets
-    // activeNetworkAccountId to null as a side effect — it was written for
-    // the old platform-tab-first flow. Call it BEFORE setting the account id
-    // here so this screen's per-channel selection wins, not gets clobbered.
-    setNetworkTab(channel.platform);
+    setActiveNetworkTab(channel.platform);
     setActiveNetworkAccountId(channel.accountId);
     setActivePlatform(channel.platform);
     setActivePopover(null);
     setShowTypeDropdown(false);
-    applyCustomModeFor(channel);
   };
 
   // If the channel currently being viewed gets removed (via the "+" picker
@@ -232,7 +219,7 @@ export function NetworkCustomizeScreen({ onClose }) {
     ? (activeThreadPost !== undefined
         ? (typeof activeThreadPost === 'string' ? activeThreadPost : activeThreadPost?.text || '')
         : (activeThreadIndex === 0 ? caption || '' : ''))
-    : (activeEntry?.useTemplate === false ? (activeEntry?.caption || "") : (activeEntry?.caption || caption || ""));
+    : (activeEntry?.useTemplate === false ? (activeEntry?.caption ?? caption ?? "") : (activeEntry?.caption || caption || ""));
 
   const globalMedia = (postMedia && postMedia.length > 0)
     ? postMedia
@@ -324,62 +311,75 @@ export function NetworkCustomizeScreen({ onClose }) {
         isFullScreen ? 'max-w-none rounded-none border-0' : 'max-w-[1530px] rounded-[24px] border border-border/40'
       }`}>
 
-        {/* Unified Top Headbar matching Figma / User Reference */}
-        <div className="shrink-0 px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between z-30">
-          <div className="flex items-center gap-3">
+        {/* Unified Top Headbar matching Figma / User Reference — below md,
+            back + title + Tags + RightPanelTabSwitcher don't fit a 375px
+            viewport alongside fullscreen/close. Close is the one control a
+            user must always reach without scrolling, so it (with
+            Fullscreen) stays pinned outside the scroll region; only
+            back+title+Tags+tabs scroll horizontally. */}
+        <div className="shrink-0 px-3 md:px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between gap-2 z-30">
+          <div className="flex items-center gap-3 overflow-x-auto scrollbar-none min-w-0">
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+              className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer shrink-0"
               title="Quay lại"
             >
               <ArrowLeft size={18} />
             </button>
-            <h1 className="text-base font-bold text-foreground tracking-tight font-sans">
+            <h1 className="text-base font-bold text-foreground tracking-tight font-sans whitespace-nowrap shrink-0">
               {t("planner:postCreator.networkCustomize.title", "Customize per network")}
             </h1>
 
             {/* Tags Dropdown Button */}
             <button
               type="button"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs shrink-0"
             >
               <Tag size={13} className="text-muted-foreground" />
               <span>{t("planner:postCreator.header.tags", "Tags")}</span>
               <ChevronDown size={12} className="text-muted-foreground" />
             </button>
+
+            <div className="hidden md:block h-4 w-px bg-border/60 shrink-0" />
+
+            <div className="hidden md:block shrink-0">
+              <RightPanelTabSwitcher />
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <RightPanelTabSwitcher />
-
-            <div className="h-4 w-px bg-border/60 shrink-0" />
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setIsFullScreen(!isFullScreen)}
-                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
-              >
-                {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-              <button
-                type="button"
-                onClick={handleExit}
-                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                title="Đóng"
-              >
-                <X size={18} />
-              </button>
-            </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsFullScreen(!isFullScreen)}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+              title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
+            >
+              {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={handleExit}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+              title="Đóng"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
 
-        {/* Main 2-Column Content Body */}
-        <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Below md, RightPanelTabSwitcher moves to its own row, same as
+            PostCreator.jsx — burying it in the title's horizontal scroll
+            made it easy to miss on mobile. */}
+        <div className="md:hidden shrink-0 px-3 py-2 border-b border-border/60 bg-card overflow-x-auto scrollbar-none">
+          <RightPanelTabSwitcher />
+        </div>
+
+        {/* Main 2-Column Content Body — stacks vertically below md, same
+            reasoning as PostCreator.jsx's main body. */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
           {/* Left Column: Workspace & Channels & Footer */}
-          <div className="flex-[1.1] flex flex-col min-h-0">
+          <div className="md:flex-[1.1] flex flex-col min-h-0 shrink-0 md:shrink">
 
           {/* Unified Header matching ComposerHeader layout & single border-b */}
           <div className="shrink-0 px-8 py-3 border-b border-border flex flex-col gap-3 bg-card z-10">
@@ -564,7 +564,7 @@ export function NetworkCustomizeScreen({ onClose }) {
                       : t("planner:postCreator.networkCustomize.caption")}
                   </label>
                   {activeConfig?.supportedTypes?.length > 1 && (
-                    <div className="relative">
+                    <div className="relative" ref={typeDropdownRef}>
                       <button
                         type="button"
                         onClick={() => setShowTypeDropdown((v) => !v)}
@@ -671,7 +671,7 @@ export function NetworkCustomizeScreen({ onClose }) {
             null (re-clicking the active tab in RightPanelTabSwitcher toggles
             it off), same as PostCreator.jsx's right column. */}
         {rightPanelTab && (
-          <div className="flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-l border-border/40">
+          <div className="md:flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-t md:border-t-0 md:border-l border-border/40">
             {rightPanelTab === "notes" ? (
               <NotesPanel />
             ) : rightPanelTab === "templates" ? (

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   X, Check, Search, Lock, ArrowRight, Maximize2, Minimize2, Tag, ChevronDown, FileText
 } from "lucide-react";
@@ -14,11 +14,12 @@ import { usePostCreatorStore } from "../../store/usePostCreatorStore";
 import { FirstCommentModal } from "../../components/workspace/post-creator/modals/FirstCommentModal";
 import { GoogleDrivePickerModal } from "../../components/workspace/post-creator/modals/GoogleDrivePickerModal";
 import { MediaUploadModal } from "../../components/workspace/post-creator/modals/MediaUploadModal";
-import { uploadMediaFile } from "../../services/mediaUpload.service";
 import { MEDIA_FILTER_TYPES } from "../../constants/mediaAcceptStrategy";
 import { ImageEditorModal } from "../../components/workspace/post-creator/modals/ImageEditorModal";
 import { VideoEditorModal } from "../../components/workspace/post-creator/modals/VideoEditorModal";
 import { AltTextModal } from "../../components/workspace/post-creator/modals/AltTextModal";
+import { ReviewersModal } from "../../components/workspace/post-creator/modals/ReviewersModal";
+import { FeatureGateModal } from "../../components/workspace/post-creator/modals/FeatureGateModal";
 import { NETWORK_TAB_TEMPLATE } from "../../constants/postComposerNetwork";
 import { toast } from "sonner";
 import { useBrandPermission } from "../../hooks/useBrandPermission";
@@ -189,6 +190,7 @@ export function PostCreatorPage() {
     isEditByNetwork,
     setIsEditByNetwork,
     activeNetworkTab,
+    setActiveNetworkTab,
     setNetworkTab,
     activeNetworkAccountId,
     selectedAccountIds,
@@ -294,10 +296,8 @@ export function PostCreatorPage() {
     }
   };
 
-  if (!isOpen) return null;
-
-  // Context value object containing all states, handlers and variables
-  const contextValue = {
+  // Context value object containing all states, handlers and variables (Memoized)
+  const contextValue = useMemo(() => ({
     ...formState,
     caption,
     setCaption,
@@ -426,6 +426,7 @@ export function PostCreatorPage() {
     isEditByNetwork,
     setIsEditByNetwork,
     activeNetworkTab,
+    setActiveNetworkTab,
     setNetworkTab,
     networkCustom,
     toggleUseTemplate,
@@ -489,7 +490,28 @@ export function PostCreatorPage() {
     backupFormState,
     isFullScreen,
     setIsFullScreen
-  };
+  }), [
+    caption, title, selectedPlatforms, activePlatform, platformLimits,
+    previewDevice, showPublishMenu, selectedPublishId, activeBrand, isCreating,
+    submitProgressText, scheduledDate, isLibrary, globalOpen, youtubeOpen, youtubeType,
+    showTypeMenu, youtubeTitle, youtubeMadeForKids, youtubePrivacy, youtubeCategory,
+    youtubePlaylistId, youtubeTags, youtubeFirstComment, globalFirstComment, youtubeThumbnail,
+    playlists, isLoadingPlaylists, videoFile, videoFileUrl, uploadedVideoPath, isUploadingVideo,
+    activePopover, showFirstCommentModal, isDriveModalOpen, editingPost, facebookOpen,
+    facebookType, showFacebookTypeMenu, facebookTitle, instagramOpen, instagramType,
+    showInstagramTypeMenu, instagramCollaborators, instagramAudio, instagramShowOnFeed,
+    altText, tiktokOpen, tiktokPrivacy, tiktokAllowComments, tiktokAllowDuet, tiktokAllowStitch,
+    tiktokAiGenerated, tiktokCommercialContent, potentialReviewers, selectedReviewerId,
+    selectedReviewerIds, approvalPolicy, requesterNote, isLoadingReviewers, postMedia,
+    threadsWhoCanReply, isEditByNetwork, activeNetworkTab, activeNetworkAccountId, networkCustom, notes, videoSettings,
+    threadsOpen, isUploadingThumbnail, newNoteText, blockedProductId, showReviewersModal,
+    reviewerSearchQuery, showUploadModal, uploadModalTab, mediaTypeFilter, showImageMenu,
+    showImageEditor, showVideoEditor, editingPostMediaIndex, imageTransform, showAltTextModal,
+    useUrlShortener, templates, loadingTemplates, hasCreatePermission, hasApprovePermission,
+    isFullScreen
+  ]);
+
+  if (!isOpen) return null;
 
   return (
     <PostCreatorFormProvider value={contextValue}>
@@ -501,10 +523,15 @@ export function PostCreatorPage() {
           isFullScreen ? 'max-w-none rounded-none border-0' : 'max-w-[1530px] rounded-[24px] border border-border/40'
         }`}>
 
-          {/* Unified Top Headbar matching Figma / User Reference */}
-          <div className="shrink-0 px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between z-30">
-            <div className="flex items-center gap-3">
-              <h1 className="text-base font-bold text-foreground tracking-tight font-sans">
+          {/* Unified Top Headbar matching Figma / User Reference — below md,
+              the title + Tags button + RightPanelTabSwitcher (4 tabs) don't
+              fit 375px width alongside fullscreen/close. Close in particular
+              is the one control a user must always be able to reach without
+              scrolling, so it (with Fullscreen) stays pinned outside the
+              scroll region; only title+Tags+tabs scroll horizontally. */}
+          <div className="shrink-0 px-3 md:px-6 py-3.5 border-b border-border/60 bg-card flex items-center justify-between gap-2 z-30">
+            <div className="flex items-center gap-3 overflow-x-auto scrollbar-none min-w-0">
+              <h1 className="text-base font-bold text-foreground tracking-tight font-sans whitespace-nowrap shrink-0">
                 {isLibrary
                   ? (editingPost ? t("planner:postCreator.header.editTemplate") : t("planner:postCreator.header.createTemplate"))
                   : (editingPost ? t("planner:postCreator.header.editPost", "Create Post") : t("planner:postCreator.header.createPost", "Create Post"))}
@@ -513,45 +540,56 @@ export function PostCreatorPage() {
               {/* Tags Dropdown Button */}
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all cursor-pointer font-sans shadow-xs shrink-0"
               >
                 <Tag size={13} className="text-muted-foreground" />
                 <span>{t("planner:postCreator.header.tags", "Tags")}</span>
                 <ChevronDown size={12} className="text-muted-foreground" />
               </button>
+
+              <div className="hidden md:block h-4 w-px bg-border/60 shrink-0" />
+
+              <div className="hidden md:block shrink-0">
+                <RightPanelTabSwitcher />
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <RightPanelTabSwitcher />
-
-              <div className="h-4 w-px bg-border/60 shrink-0" />
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setIsFullScreen(!isFullScreen)}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                  title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
-                >
-                  {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                </button>
-                <button
-                  type="button"
-                  onClick={closePostCreator}
-                  data-testid="post-creator-close-btn"
-                  className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
-                  title="Đóng"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                title={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
+              >
+                {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              <button
+                type="button"
+                onClick={closePostCreator}
+                data-testid="post-creator-close-btn"
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all cursor-pointer"
+                title="Đóng"
+              >
+                <X size={18} />
+              </button>
             </div>
           </div>
 
-          {/* Main 2-Column Content Body */}
-          <div className="flex-1 flex overflow-hidden min-h-0">
+          {/* Below md, RightPanelTabSwitcher moves to its own row (hidden
+              from the scrollable title row above) since it's how mobile
+              users reach Notes/Templates/AI — burying it in a horizontal
+              scroll next to the title made it easy to miss entirely. */}
+          <div className="md:hidden shrink-0 px-3 py-2 border-b border-border/60 bg-card overflow-x-auto scrollbar-none">
+            <RightPanelTabSwitcher />
+          </div>
+
+          {/* Main 2-Column Content Body — stacks vertically (form above
+              preview, both independently scrollable) below md, since a
+              side-by-side flex here left each column only a few dozen px
+              wide on a 375px viewport. */}
+          <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
             {/* Cột 1: COMPOSE (Bên trái) */}
-            <div className="flex-[1.1] flex flex-col min-h-0">
+            <div className="md:flex-[1.1] flex flex-col min-h-0 shrink-0 md:shrink">
               <ComposerHeader />
               <ComposerBody />
             </div>
@@ -560,7 +598,7 @@ export function PostCreatorPage() {
                 collapses entirely when rightPanelTab is null (re-clicking the
                 active tab in RightPanelTabSwitcher toggles it off). */}
             {rightPanelTab && (
-              <div className="flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-l border-border/40">
+              <div className="md:flex-[0.9] flex flex-col min-h-0 overflow-hidden bg-muted/20 border-t md:border-t-0 md:border-l border-border/40">
                 {rightPanelTab === 'notes' ? (
                   <NotesPanel />
                 ) : rightPanelTab === 'templates' ? (
@@ -613,15 +651,6 @@ export function PostCreatorPage() {
           // the two are independent UIs sharing the same underlying data.
           const isInNetworkEditingContext = isEditByNetwork || isNetworkCustomizeOpen;
 
-          const isCustomizingThreads = isInNetworkEditingContext
-            && activeNetworkTab === 'threads'
-            && networkCustom?.threads?.useTemplate === false;
-
-          const isCustomizingNonThreadsPlatform = isInNetworkEditingContext
-            && activeNetworkTab !== NETWORK_TAB_TEMPLATE
-            && activeNetworkTab !== 'threads'
-            && networkCustom?.[activeNetworkTab]?.useTemplate === false;
-
           // When the platform being edited has ≥2 targeted accounts, its
           // content lives in a perAccount slot, not the platform-level
           // entry — mirrors NetworkCustomizeScreen's own
@@ -629,24 +658,36 @@ export function PostCreatorPage() {
           // media read/write (including edits saved from ImageEditorModal/
           // VideoEditorModal below) hits the right slot instead of always
           // falling back to the shared platform-level one.
-          const accountsForActiveNetworkTab = isCustomizingNonThreadsPlatform
-            ? (activeBrand?.socialAccounts || []).filter(
-                sa => (sa.platform || '').toLowerCase() === activeNetworkTab && selectedAccountIds.includes(sa.id)
-              )
-            : [];
+          const accountsForActiveNetworkTab = (activeBrand?.socialAccounts || []).filter(
+            sa => (sa.platform || '').toLowerCase() === activeNetworkTab && selectedAccountIds.includes(sa.id)
+          );
           const effectiveNetworkAccountId = accountsForActiveNetworkTab.length > 1
             ? activeNetworkAccountId
             : null;
+
+          const isCustomizingThreads = isInNetworkEditingContext
+            && activeNetworkTab === 'threads';
+
+          const isCustomizingNonThreadsPlatform = isInNetworkEditingContext
+            && activeNetworkTab !== NETWORK_TAB_TEMPLATE
+            && activeNetworkTab !== 'threads';
 
           const activeThreadIndex = networkCustom?.threads?.activeThreadIndex || 0;
           const activeThreadPost = isCustomizingThreads
             ? networkCustom?.threads?.threadPosts?.[activeThreadIndex]
             : null;
 
+          const activeNetworkEntry = networkCustom?.[activeNetworkTab];
+          const activeNetworkSlot = effectiveNetworkAccountId
+            ? activeNetworkEntry?.perAccount?.[effectiveNetworkAccountId]
+            : activeNetworkEntry;
+
+          const isCustomMedia = activeNetworkSlot?.useTemplate === false;
+
           const activeNetworkMedia = isCustomizingNonThreadsPlatform
-            ? (effectiveNetworkAccountId
-                ? (networkCustom?.[activeNetworkTab]?.perAccount?.[effectiveNetworkAccountId]?.mediaUrls || [])
-                : (networkCustom?.[activeNetworkTab]?.mediaUrls || []))
+            ? (isCustomMedia
+                ? (activeNetworkSlot?.mediaUrls || [])
+                : postMedia)
             : isCustomizingThreads
               ? ((typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [])
               : postMedia;
@@ -664,25 +705,24 @@ export function PostCreatorPage() {
                 }}
                 onAccept={async (items) => {
                   if (isUploadingThumbnail) {
-                    // Thumbnail is the one case that needs a real URL right
-                    // away (fed straight into mediaThumbnailUrl, the SSoT
-                    // YouTube/Facebook Reel read at submit) — the modal
-                    // itself always defers upload now, so this uploads the
-                    // picked file itself instead of relying on the modal to
-                    // special-case it via multiple={false}.
+                    // Thumbnail upload is deferred like every other media
+                    // item now — mediaThumbnailUrl only needs to be a valid
+                    // <img>/<video poster> src for preview (PreviewBody/
+                    // ComposerBody), which a local blob satisfies just as
+                    // well as a real Cloudinary URL. The actual upload
+                    // happens in handleCreatePost's pending-file scan.
                     const thumbItem = items[0];
                     setIsUploadingThumbnail(false);
                     if (!thumbItem) return;
                     if (thumbItem.path) {
                       formState.setMediaThumbnailUrl(thumbItem.path);
+                      formState.setMediaThumbnailFile(null);
+                      formState.setMediaThumbnailPath(thumbItem.path);
                       return;
                     }
-                    try {
-                      const url = await uploadMediaFile(thumbItem.file, activeBrand.id);
-                      formState.setMediaThumbnailUrl(url);
-                    } catch (err) {
-                      toast.error(err.message || "Failed to upload thumbnail");
-                    }
+                    formState.setMediaThumbnailFile(thumbItem.file);
+                    formState.setMediaThumbnailPath(null);
+                    formState.setMediaThumbnailUrl(thumbItem.previewUrl || "");
                     return;
                   }
 
@@ -730,6 +770,7 @@ export function PostCreatorPage() {
                 }
                 currentTransform={imageTransform}
                 brandId={activeBrand?.id}
+                eager={false}
                 onClose={() => {
                   setShowImageEditor(false);
                   setEditingPostMediaIndex(null);
@@ -861,14 +902,20 @@ export function PostCreatorPage() {
                 }}
                 imageUrl={
                   editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]
-                    ? (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path)
-                    : videoFileUrl
+                    ? (typeof activeNetworkMedia[editingPostMediaIndex] === 'string'
+                        ? activeNetworkMedia[editingPostMediaIndex]
+                        : (activeNetworkMedia[editingPostMediaIndex].previewUrl || activeNetworkMedia[editingPostMediaIndex].path))
+                    : (typeof postMedia[0] === 'string'
+                        ? postMedia[0]
+                        : (postMedia[0]?.previewUrl || postMedia[0]?.path || videoFileUrl))
                 }
                 imageTransform={imageTransform}
                 caption={caption}
                 initialAltText={
                   editingPostMediaIndex !== null && activeNetworkMedia[editingPostMediaIndex]
-                    ? (activeNetworkMedia[editingPostMediaIndex].caption || "")
+                    ? (typeof activeNetworkMedia[editingPostMediaIndex] === 'object'
+                        ? (activeNetworkMedia[editingPostMediaIndex].caption || "")
+                        : "")
                     : altText
                 }
                 onSave={(text) => {
@@ -879,8 +926,13 @@ export function PostCreatorPage() {
                   // array is actually active (per-network override, thread
                   // post, or the main postMedia list).
                   if (editingPostMediaIndex !== null) {
-                    const updateItem = (item, idx) =>
-                      idx === editingPostMediaIndex ? { ...item, caption: text } : item;
+                    const updateItem = (item, idx) => {
+                      if (idx !== editingPostMediaIndex) return item;
+                      if (typeof item === 'string') {
+                        return { file: null, previewUrl: item, path: item, caption: text };
+                      }
+                      return { ...item, caption: text };
+                    };
                     if (isCustomizingThreads) {
                       const current = (typeof activeThreadPost === 'object' ? activeThreadPost?.mediaUrls : []) || [];
                       updateThreadPostMedia(activeThreadIndex, current.map(updateItem));
@@ -899,186 +951,12 @@ export function PostCreatorPage() {
             </>
           );
         })()}
+
         {/* Select Reviewers Modal */}
-        {showReviewersModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-            <div className="bg-card rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-border w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 p-6 space-y-6 text-left">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-foreground tracking-tight font-sans">{t("planner:postCreator.composer.sections.selectReviewers")}</h3>
-                <button 
-                  onClick={() => setShowReviewersModal(false)}
-                  className="text-muted-foreground hover:text-black transition-colors cursor-pointer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+        <ReviewersModal />
 
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder={t("planner:postCreator.composer.sections.searchUser")}
-                  value={reviewerSearchQuery}
-                  onChange={(e) => setReviewerSearchQuery(e.target.value)}
-                  className="w-full pl-4 pr-10 py-3 bg-muted border border-transparent rounded-2xl text-[12px] font-bold text-foreground outline-none focus:bg-card focus:border-border transition-all placeholder-gray-400 font-sans"
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  <Search size={14} />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-                <span className="font-sans">{t("planner:postCreator.composer.sections.reviewers")}</span>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    const allIds = potentialReviewers.map(r => r.id);
-                    if (selectedReviewerIds.length === potentialReviewers.length) {
-                      setSelectedReviewerIds([]);
-                    } else {
-                      setSelectedReviewerIds(allIds);
-                    }
-                  }}
-                  className="text-[#10B981] hover:text-[#059669] transition-colors cursor-pointer font-bold lowercase first-letter:uppercase font-sans"
-                >
-                  {selectedReviewerIds.length === potentialReviewers.length ? t("planner:postCreator.composer.sections.uncheckAll") : t("planner:postCreator.composer.sections.checkAll")}
-                </button>
-              </div>
-
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-1.5 scrollbar-thin">
-                {potentialReviewers.length === 0 ? (
-                  <div className="py-8 text-center text-muted-foreground text-[11px] font-bold uppercase tracking-wider font-sans">
-                    Không có người duyệt khả dụng
-                  </div>
-                ) : (
-                  potentialReviewers
-                    .filter(r => r.name.toLowerCase().includes(reviewerSearchQuery.toLowerCase()))
-                    .map((rev) => {
-                      const isChecked = selectedReviewerIds.includes(rev.id);
-                      const initials = rev.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                      const hash = rev.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                      const bgColors = ["bg-[#E6F4EA] text-[#137333]", "bg-[#FEF7E0] text-[#B06000]", "bg-[#FCE8E6] text-[#C5221F]", "bg-[#F3F4F6] text-[#1F2937]", "bg-[#E4F7F6] text-[#00796B]"];
-                      const badgeStyle = bgColors[hash % bgColors.length];
-                      
-                      const handleToggle = () => {
-                        if (isChecked) {
-                          setSelectedReviewerIds(selectedReviewerIds.filter(id => id !== rev.id));
-                        } else {
-                          setSelectedReviewerIds([...selectedReviewerIds, rev.id]);
-                        }
-                      };
-
-                      return (
-                        <div 
-                          key={rev.id}
-                          onClick={handleToggle}
-                          className="flex items-center justify-between p-3.5 bg-card border border-border hover:border-border rounded-2xl transition-all cursor-pointer group font-sans"
-                        >
-                          <div className="flex items-center gap-3.5">
-                            {rev.avatarUrl ? (
-                              <img src={rev.avatarUrl} alt={rev.name} className="w-8 h-8 rounded-xl object-cover border border-border" />
-                            ) : (
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black uppercase tracking-widest ${badgeStyle}`}>
-                                {initials}
-                              </div>
-                            )}
-                            <div>
-                              <div className="text-[11px] font-bold text-foreground group-hover:text-black transition-colors">{rev.name}</div>
-                              <div className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">{rev.role}</div>
-                            </div>
-                          </div>
-                          <div
-                            className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${
-                              isChecked 
-                                ? 'border-[#10B981] bg-[#10B981] text-white' 
-                                : 'border-gray-300 bg-card'
-                            }`}
-                          >
-                            {isChecked && <Check size={10} strokeWidth={4} />}
-                          </div>
-                        </div>
-                      );
-                    })
-                )}
-              </div>
-
-              <div className="space-y-3 pt-4 border-t border-border">
-                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground font-sans">{t("planner:postCreator.composer.sections.policyLabel")}</div>
-                <div className="space-y-2.5">
-                  {[
-                    { id: 'NO_APPROVAL', label: t("planner:postCreator.composer.sections.policyNone") },
-                    { id: 'AT_LEAST_ONE', label: t("planner:postCreator.composer.sections.policyAtLeastOne") },
-                    { id: 'ALL', label: t("planner:postCreator.composer.sections.policyAll") }
-                  ].map((opt) => {
-                    const isSelected = approvalPolicy === opt.id;
-                    return (
-                      <div 
-                        key={opt.id}
-                        onClick={() => setApprovalPolicy(opt.id)}
-                        className="flex items-center gap-3 cursor-pointer group font-sans"
-                      >
-                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
-                          isSelected 
-                            ? 'border-[#0A0A0A] bg-[#0A0A0A]' 
-                            : 'border-gray-300 bg-card'
-                        }`}>
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-card" />}
-                        </div>
-                        <span className="text-[11px] font-bold text-muted-foreground group-hover:text-black transition-colors">{opt.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowReviewersModal(false)}
-                className="w-full py-3.5 bg-[#0A0A0A] hover:bg-black text-white text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all cursor-pointer shadow-md hover:shadow-lg active:scale-[0.98] font-sans"
-              >
-                {t("planner:postCreator.composer.sections.confirmSelection")}
-              </button>
-            </div>
-          </div>
-        )}
-
-
-        {blockedProductId && (
-          <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="bg-card rounded-3xl p-8 max-w-md w-full shadow-2xl text-center relative overflow-hidden animate-in zoom-in-95 duration-200 mx-4">
-              <button 
-                type="button"
-                onClick={() => setBlockedProductId(null)}
-                className="absolute top-4 right-4 text-muted-foreground hover:text-black transition-colors cursor-pointer font-sans"
-              >
-                <X size={20} />
-              </button>
-              
-              <div className="w-14 h-14 bg-gradient-to-tr from-purple-600 to-orange-500 rounded-2xl flex items-center justify-center text-white mb-5 shadow-lg shadow-purple-200 mx-auto">
-                <Lock size={26} className="animate-pulse" />
-              </div>
-              
-              <h3 className="text-xl font-bold text-foreground mb-2 font-sans">
-                {FEATURE_GATE_REGISTRY[blockedProductId]?.title || "Feature Locked"}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6 leading-relaxed font-sans">
-                {FEATURE_GATE_REGISTRY[blockedProductId]?.description || "This channel/feature is not available on your current plan. Please upgrade."}
-              </p>
-              
-              <button 
-                type="button"
-                onClick={() => {
-                  setBlockedProductId(null);
-                  closePostCreator();
-                  navigate('/pricing');
-                }}
-                className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold text-white transition-all bg-gradient-to-r from-purple-600 to-orange-500 hover:from-purple-700 hover:to-orange-600 shadow-md hover:shadow-lg active:scale-95 cursor-pointer font-sans"
-              >
-                {t("planner:upgrade.button")}
-                <ArrowRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Feature Gate / Locked Feature Upgrade Modal */}
+        <FeatureGateModal />
 
         {isNetworkCustomizeOpen && (
           <NetworkCustomizeScreen onClose={() => setIsNetworkCustomizeOpen(false)} />

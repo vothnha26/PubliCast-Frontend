@@ -7,7 +7,6 @@ export const PLATFORMS = {
   FACEBOOK: 'facebook',
   TIKTOK: 'tiktok',
   INSTAGRAM: 'instagram',
-  TELEGRAM: 'telegram',
   THREADS: 'threads',
   BLUESKY: 'bluesky',
   REDDIT: 'reddit',
@@ -27,7 +26,6 @@ export const PLATFORM_LABELS = {
   [PLATFORMS.FACEBOOK]: 'Facebook',
   [PLATFORMS.TIKTOK]: 'TikTok',
   [PLATFORMS.INSTAGRAM]: 'Instagram',
-  [PLATFORMS.TELEGRAM]: 'Telegram',
   [PLATFORMS.THREADS]: 'Threads',
   [PLATFORMS.BLUESKY]: 'Bluesky',
   [PLATFORMS.REDDIT]: 'Reddit',
@@ -40,7 +38,6 @@ export const PLATFORM_DEFAULT_TAB = {
   [PLATFORMS.FACEBOOK]: 'overview',
   [PLATFORMS.TIKTOK]: 'community',
   [PLATFORMS.INSTAGRAM]: 'community',
-  [PLATFORMS.TELEGRAM]: 'overview',
   [PLATFORMS.THREADS]: 'community',
   [PLATFORMS.BLUESKY]: 'community',
   [PLATFORMS.REDDIT]: 'overview',
@@ -53,12 +50,23 @@ export const PLATFORM_API_KEY = {
   [PLATFORMS.FACEBOOK]: 'FACEBOOK',
   [PLATFORMS.TIKTOK]: 'TIKTOK',
   [PLATFORMS.INSTAGRAM]: 'INSTAGRAM',
-  [PLATFORMS.TELEGRAM]: 'TELEGRAM',
   [PLATFORMS.THREADS]: 'THREADS',
   [PLATFORMS.BLUESKY]: 'BLUESKY',
   [PLATFORMS.REDDIT]: 'REDDIT',
   [PLATFORMS.TWITCH]: 'TWITCH',
   X: 'TWITTER_X', // special case
+};
+
+/** Map từ backend uppercase platform name sang lowercase key */
+export const PLATFORM_KEY_MAP = {
+  FACEBOOK: PLATFORMS.FACEBOOK,
+  INSTAGRAM: PLATFORMS.INSTAGRAM,
+  YOUTUBE: PLATFORMS.YOUTUBE,
+  TIKTOK: PLATFORMS.TIKTOK,
+  THREADS: PLATFORMS.THREADS,
+  BLUESKY: PLATFORMS.BLUESKY,
+  REDDIT: PLATFORMS.REDDIT,
+  TWITCH: PLATFORMS.TWITCH,
 };
 
 /** Stock Providers & Types */

@@ -59,11 +59,10 @@ export function useChannelInsights(socialAccountId, platformInput) {
   const startDate = dateRange.from?.toISOString().slice(0, 10);
   const endDate = dateRange.to?.toISOString().slice(0, 10);
 
-  // Cached in IndexedDB (see App.jsx's PersistQueryClientProvider) and kept
-  // fresh by the `data_invalidate` socket event (services/socket.js already
-  // invalidates any query keyed [CACHE_SCOPES.METRICS, brandId, ...] on that
-  // event) instead of a client-side poll, so a page refresh shows the last
-  // known data instantly rather than a blank loading state.
+  // In-memory React Query cache, kept fresh by the `data_invalidate` socket
+  // event (services/socket.js already invalidates any query keyed
+  // [CACHE_SCOPES.METRICS, brandId, ...] on that event) instead of a
+  // client-side poll.
   const metricsQuery = useMetricsQuery(activeBrand?.id, startDate, endDate);
   const metrics = useMemo(
     () => (metricsQuery.data || []).find((m) => m?.id === socialAccountId) || null,
@@ -111,7 +110,8 @@ export function useChannelInsights(socialAccountId, platformInput) {
         setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === PLATFORMS.BLUESKY) {
         const res = await socialService.getBlueskyPublishedPosts(activeBrand.id, pageToken, limit, socialAccountId);
-        const mapped = (res?.data || []).map((p) => ({
+        const postsList = Array.isArray(res) ? res : (res?.data || []);
+        const mapped = postsList.map((p) => ({
           id: p.id,
           message: p.message || "",
           date: p.date,
@@ -123,7 +123,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
         }));
         setPublishedVideos(mapped);
         setNextPageToken(res?.nextPageToken || null);
-        setPrevPageToken(null);
+        setPrevPageToken(res?.prevPageToken || null);
       } else {
         const res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit, socialAccountId, startDate, endDate);
         setPublishedVideos(res.videos || []);
@@ -179,13 +179,22 @@ export function useChannelInsights(socialAccountId, platformInput) {
         videos: 0,
       };
     }
-    if (platform === PLATFORMS.INSTAGRAM || platform === PLATFORMS.THREADS) {
+    if (platform === PLATFORMS.INSTAGRAM) {
       if (!metrics.instagramAccount) return { subscribers: 0, views: 0, videos: 0 };
       return {
         subscribers: metrics.instagramAccount.followersCount,
         views: realData.summary?.views || 0,
         likes: realData.summary?.likes || 0,
         videos: metrics.instagramAccount.mediaCount || 0,
+      };
+    }
+    if (platform === PLATFORMS.THREADS) {
+      if (!metrics.threadsAccount) return { subscribers: 0, views: 0, videos: 0 };
+      return {
+        subscribers: metrics.threadsAccount.followersCount,
+        views: realData.summary?.views || 0,
+        likes: realData.summary?.likes || 0,
+        videos: metrics.threadsAccount.mediaCount || 0,
       };
     }
     if (platform === PLATFORMS.TIKTOK) {
@@ -213,9 +222,6 @@ export function useChannelInsights(socialAccountId, platformInput) {
     };
   }, [metrics, platform, realData]);
 
-  const totalPeriodViews = useMemo(() => realData.growth?.reduce((a, b) => a + (b.value || 0), 0) || 0, [realData.growth]);
-  const totalPeriodGained = useMemo(() => realData.growth?.reduce((a, b) => a + (b.new || 0), 0) || 0, [realData.growth]);
-
   const communityGrowthData = useMemo(() => {
     if (!dateRange.from || !dateRange.to) return [];
     try {
@@ -242,7 +248,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
 
           return {
             name: dateString,
-            followers: realDayData ? realDayData.followers || 0 : 0,
+            followers: (realDayData && realDayData.followers > 0) ? realDayData.followers : (metrics?.instagramAccount?.followersCount || 0),
             following: metrics?.instagramAccount?.followingCount || 0,
             totalContent: postsCount,
             posts: postsCount,
@@ -265,6 +271,8 @@ export function useChannelInsights(socialAccountId, platformInput) {
           videos: realDayData ? realDayData.videos : 0,
           new: realDayData ? realDayData.new : 0,
           lost: realDayData ? realDayData.lost : 0,
+          likes: realDayData ? realDayData.likes || 0 : 0,
+          comments: realDayData ? realDayData.comments || 0 : 0,
         };
       });
     } catch (e) {
@@ -272,6 +280,19 @@ export function useChannelInsights(socialAccountId, platformInput) {
       return [];
     }
   }, [dateRange, realData.growth, platform, metrics]);
+
+  const totalPeriodViews = useMemo(
+    () => communityGrowthData?.reduce((a, b) => a + (b.views || 0), 0) || 0,
+    [communityGrowthData]
+  );
+  const totalPeriodGained = useMemo(
+    () => communityGrowthData?.reduce((a, b) => a + (b.subscribers || b.new || 0), 0) || 0,
+    [communityGrowthData]
+  );
+  const totalPeriodVideos = useMemo(
+    () => communityGrowthData?.reduce((a, b) => a + (b.videos || 0), 0) || 0,
+    [communityGrowthData]
+  );
 
   return {
     dateRange,
@@ -287,6 +308,7 @@ export function useChannelInsights(socialAccountId, platformInput) {
     stats,
     totalPeriodViews,
     totalPeriodGained,
+    totalPeriodVideos,
     communityGrowthData,
     isPlatformLocked,
     platformLockReason,

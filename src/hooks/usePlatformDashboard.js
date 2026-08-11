@@ -224,25 +224,16 @@ export function usePlatformDashboard(platform) {
         setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "threads") {
         const res = await socialService.getThreadsPublishedPosts(activeBrand.id, pageToken, limit);
-        setPublishedVideos(res || []);
+        const list = Array.isArray(res) ? res : (res?.data || res?.videos || []);
+        setPublishedVideos(list);
         setNextPageToken(res?.nextPageToken || null);
         setPrevPageToken(res?.prevPageToken || null);
       } else if (platform === "bluesky") {
-        const posts = await postService.getPosts(activeBrand.id, { platform: 'BLUESKY', status: 'PUBLISHED', limit });
-        const postsList = posts || [];
-        const mapped = postsList.map(p => ({
-          id: p.id,
-          message: p.caption || p.title || '',
-          date: p.publishedAt || p.createdAt,
-          mediaUrl: p.mediaUrls && p.mediaUrls.length > 0 ? p.mediaUrls[0] : null,
-          reach: 0,
-          views: 0,
-          likes: 0,
-          comments: 0
-        }));
-        setPublishedVideos(mapped);
-        setNextPageToken(null);
-        setPrevPageToken(null);
+        const res = await socialService.getBlueskyPublishedPosts(activeBrand.id, pageToken, limit);
+        const list = Array.isArray(res) ? res : (res?.data || res?.videos || []);
+        setPublishedVideos(list);
+        setNextPageToken(res?.nextPageToken || null);
+        setPrevPageToken(res?.prevPageToken || null);
       } else {
         const res = await socialService.getPublishedVideos(activeBrand.id, pageToken, limit);
         setPublishedVideos(res.videos || []);
@@ -423,13 +414,24 @@ export function usePlatformDashboard(platform) {
         videos: 0
       };
     }
-    if (platform === "instagram" || platform === "threads") {
+    if (platform === "instagram") {
       if (!metrics.instagramAccount) return { subscribers: 0, views: 0, videos: 0 };
       return {
         subscribers: metrics.instagramAccount.followersCount,
         views: realData.summary?.views || 0,
         likes: realData.summary?.likes || 0,
-        videos: metrics.instagramAccount.mediaCount || 0
+        videos: metrics.instagramAccount.mediaCount || 0,
+        profilePictureUrl: metrics.profilePictureUrl || metrics.instagramAccount.profilePictureUrl || ''
+      };
+    }
+    if (platform === "threads") {
+      if (!metrics.threadsAccount) return { subscribers: 0, views: 0, videos: 0 };
+      return {
+        subscribers: metrics.threadsAccount.followersCount,
+        views: realData.summary?.views || 0,
+        likes: realData.summary?.likes || 0,
+        videos: metrics.threadsAccount.mediaCount || 0,
+        profilePictureUrl: metrics.profilePictureUrl || metrics.threadsAccount.profilePictureUrl || ''
       };
     }
     if (platform === "tiktok") {
@@ -479,7 +481,7 @@ export function usePlatformDashboard(platform) {
 
           return {
             name: dateString,
-            followers: realDayData ? (realDayData.followers || 0) : 0,
+            followers: (realDayData && realDayData.followers > 0) ? realDayData.followers : (metrics?.instagramAccount?.followersCount || 0),
             following: metrics?.instagramAccount?.followingCount || 0,
             totalContent: postsCount,
             posts: postsCount,
@@ -491,6 +493,54 @@ export function usePlatformDashboard(platform) {
             comments: commentsCount,
             saved: savedCount,
             shares: sharesCount
+          };
+        }
+
+        if (platform === "threads") {
+          const likesCount = realDayData ? (realDayData.likes || 0) : 0;
+          const commentsCount = realDayData ? (realDayData.comments || 0) : 0;
+          const sharesCount = realDayData ? (realDayData.shares || 0) : 0;
+          const postsCount = realDayData ? (realDayData.totalContent || realDayData.posts || 0) : 0;
+          const interactionsCount = realDayData ? (realDayData.interactions || (likesCount + commentsCount + sharesCount)) : 0;
+          const viewsCount = realDayData ? (realDayData.views || 0) : 0;
+          const engagementRate = realDayData ? (realDayData.engagement || 0) : 0;
+
+          return {
+            name: dateString,
+            followers: (realDayData && realDayData.followers > 0) ? realDayData.followers : (metrics?.threadsAccount?.followersCount || metrics?.followersCount || 0),
+            following: metrics?.threadsAccount?.followingCount || metrics?.followingCount || 0,
+            totalContent: postsCount,
+            posts: postsCount,
+            engagement: engagementRate,
+            interactions: interactionsCount,
+            views: viewsCount,
+            likes: likesCount,
+            comments: commentsCount,
+            shares: sharesCount
+          };
+        }
+
+        if (platform === "bluesky") {
+          const likesCount = realDayData ? (realDayData.likes || 0) : 0;
+          const commentsCount = realDayData ? (realDayData.comments || realDayData.replies || 0) : 0;
+          const sharesCount = realDayData ? (realDayData.shares || realDayData.reposts || 0) : 0;
+          const postsCount = realDayData ? (realDayData.totalContent || realDayData.posts || 0) : 0;
+          const interactionsCount = realDayData ? (realDayData.interactions || (likesCount + commentsCount + sharesCount)) : 0;
+          const viewsCount = realDayData ? (realDayData.views || 0) : 0;
+          const followersVal = (realDayData && realDayData.followers > 0) ? realDayData.followers : (metrics?.blueskyAccount?.followersCount || metrics?.followersCount || 0);
+          const followsVal = (realDayData && realDayData.follows > 0) ? realDayData.follows : (metrics?.blueskyAccount?.followsCount || metrics?.followsCount || 0);
+
+          return {
+            name: dateString,
+            followers: followersVal,
+            following: followsVal,
+            totalContent: postsCount,
+            posts: postsCount,
+            views: viewsCount,
+            likes: likesCount,
+            comments: commentsCount,
+            shares: sharesCount,
+            interactions: interactionsCount
           };
         }
 
@@ -548,6 +598,7 @@ export function usePlatformDashboard(platform) {
     realData,
     totalPeriodViews,
     totalPeriodGained,
+    totalPeriodVideos,
     communityGrowthData,
     handleTrackVideo,
     handleSearchCompetitors,
