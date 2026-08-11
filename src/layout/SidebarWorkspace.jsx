@@ -3,7 +3,8 @@ import {
   TrendingUp, Hash, Settings,
   FileText, ClipboardCheck,
   Sun, Moon, Diamond, Users,
-  ArrowLeftRight, Compass
+  ArrowLeftRight, Compass,
+  BarChart2, Image, MessageSquare, Link2, Zap
 } from "lucide-react";
 import { useBrand } from "../context/BrandContext";
 import { useConnections } from "../context/ConnectionsContext";
@@ -41,7 +42,7 @@ const MANAGE_ITEMS = [
 // AccountMenu dropdown on the Topbar (visible on every page, not just
 // Manage mode) — kept here would just duplicate the same destinations.
 
-export function SidebarWorkspace() {
+export function SidebarWorkspace({ mobileOpen = false, onMobileClose } = {}) {
   const { t } = useTranslation("topbar");
   const location = useLocation();
   const navigate = useNavigate();
@@ -82,10 +83,21 @@ export function SidebarWorkspace() {
   const goToWorkspace = () => navigate("/dashboard");
 
   return (
-    <aside
-      style={{ width: 220, background: "var(--sidebar)", borderRight: "1px solid var(--sidebar-border)", overflowX: "hidden" }}
-      className="flex flex-col h-full shrink-0 transition-colors duration-200"
-    >
+    <>
+      {/* Backdrop — mobile only, dismisses the drawer on tap outside it */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          onClick={onMobileClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        style={{ width: 220, background: "var(--sidebar)", borderRight: "1px solid var(--sidebar-border)", overflowX: "hidden" }}
+        className={`flex flex-col h-full shrink-0 transition-transform duration-200 fixed md:static inset-y-0 left-0 z-40 md:z-auto md:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
       {isManageMode ? (
         <div className="flex-1 py-6 px-3 overflow-y-auto scrollbar-none">
           {/* Section Label + explicit switch back to Workspace */}
@@ -179,6 +191,32 @@ export function SidebarWorkspace() {
                   <ArrowLeftRight size={13} />
                 </button>
               </div>
+              {/* Mobile-only: mirrors Topbar's center nav cluster (Dashboard/
+                  Media/Inbox/SmartLinks/AI), which is hidden below md since
+                  it has no room to render on narrow screens — Planner stays
+                  visible at all widths as it already lived here. */}
+              {[
+                { path: "/dashboard", icon: <BarChart2 size={18} />, labelKey: "nav.dashboard" },
+                { path: "/media-library", icon: <Image size={18} />, labelKey: "nav.mediaLibrary" },
+                { path: "/manage/inbox", icon: <MessageSquare size={18} />, labelKey: "nav.inbox" },
+              ].map(({ path, icon, labelKey }) => {
+                const isActive = currentPath.startsWith(path);
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all no-underline hover:bg-[var(--sidebar-accent)] md:hidden"
+                    style={{
+                      backgroundColor: isActive ? "var(--sidebar-accent)" : "transparent",
+                      color: isActive ? "var(--sidebar-foreground)" : "var(--muted-foreground)"
+                    }}
+                  >
+                    <div style={{ color: isActive ? "var(--sidebar-foreground)" : undefined }}>{icon}</div>
+                    <span style={{ fontSize: 13, fontWeight: isActive ? 600 : 400 }}>{t(labelKey)}</span>
+                    {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />}
+                  </Link>
+                );
+              })}
               <Link
                 to="/planner"
                 className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all no-underline hover:bg-[var(--sidebar-accent)]"
@@ -193,6 +231,27 @@ export function SidebarWorkspace() {
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />
                 )}
               </Link>
+              {[
+                { path: "/smartlinks", icon: <Link2 size={18} />, labelKey: "nav.smartlinks" },
+                { path: "/ai", icon: <Zap size={18} />, labelKey: "nav.ai" },
+              ].map(({ path, icon, labelKey }) => {
+                const isActive = currentPath.startsWith(path);
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all no-underline hover:bg-[var(--sidebar-accent)] md:hidden"
+                    style={{
+                      backgroundColor: isActive ? "var(--sidebar-accent)" : "transparent",
+                      color: isActive ? "var(--sidebar-foreground)" : "var(--muted-foreground)"
+                    }}
+                  >
+                    <div style={{ color: isActive ? "var(--sidebar-foreground)" : undefined }}>{icon}</div>
+                    <span style={{ fontSize: 13, fontWeight: isActive ? 600 : 400 }}>{t(labelKey)}</span>
+                    {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--sidebar-foreground)]" />}
+                  </Link>
+                );
+              })}
               <Link
                 to="/manage/tasks"
                 className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all no-underline hover:bg-[var(--sidebar-accent)]"
@@ -271,6 +330,7 @@ export function SidebarWorkspace() {
            })}
          </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

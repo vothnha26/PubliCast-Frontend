@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import {
   BarChart2, MessageSquare, Calendar, Link2, Image, Zap, Sparkles, X,
-  ChevronDown, Settings, Bell, Search, Check, Star
+  ChevronDown, Settings, Bell, Search, Check, Star, Menu
 } from "lucide-react";
 import { useBrand } from "../context/BrandContext";
 import { useDebounce } from "../hooks/useDebounce";
@@ -12,8 +12,9 @@ import { openNotificationStream } from "../utils/notification-stream";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../context/LanguageContext";
 import { AccountMenu } from "./AccountMenu";
+import { FlagIcon } from "../components/shared/FlagIcon";
 
-export function Topbar() {
+export function Topbar({ onMenuClick } = {}) {
   const { t } = useTranslation("topbar");
   const { language, setLanguage } = useLanguage();
   const navigate = useNavigate();
@@ -129,6 +130,17 @@ export function Topbar() {
           color: "var(--foreground)",
           gap: 16 }}
       >
+        {/* Mobile-only: opens SidebarWorkspace's off-canvas drawer */}
+        {!isSuperadmin && onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="md:hidden shrink-0 p-1.5 -ml-1 rounded-md hover:bg-[var(--muted)] transition-colors"
+            aria-label={t("nav.openMenu", "Open menu")}
+          >
+            <Menu size={20} className="text-[var(--foreground)]" />
+          </button>
+        )}
+
         {/* Left: Logo */}
         <Link to="/" className="flex items-center gap-2 no-underline shrink-0 mr-4">
           <div className="w-8 h-8 flex items-center justify-center">
@@ -194,8 +206,14 @@ export function Topbar() {
           </div>
         )}
 
-        {/* Center: Main Tools / Superadmin Title */}
-        <div className="flex-1 flex items-center justify-center gap-1">
+        {/* Center: Main Tools / Superadmin Title.
+            The 6-item workspace tool row is hidden below md — it has no
+            room on a narrow phone screen and used to get silently clipped/
+            overlapped by the overflow-x-auto scroller; SidebarWorkspace's
+            mobile drawer now carries the same destinations instead. The
+            Superadmin title stays visible at every width since it has no
+            drawer equivalent to fall back to. */}
+        <div className={`flex-1 items-center justify-center gap-1 overflow-x-auto scrollbar-none min-w-0 ${isSuperadmin ? "flex" : "hidden md:flex"}`}>
           {isSuperadmin ? (
             <div className="flex items-center gap-2">
               <span style={{ fontSize: 13, fontWeight: 700, color: "#EF4444", textTransform: "uppercase", letterSpacing: "1.5px" }}>
@@ -216,7 +234,7 @@ export function Topbar() {
                 <button
                   key={i}
                   onClick={() => navigate(tool.path)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-[var(--muted)] transition-colors relative"
+                  className="shrink-0 flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-[var(--muted)] transition-colors relative"
                   style={{ color: "var(--foreground)", backgroundColor: isActive ? "var(--muted)" : "transparent" }}
                   title={tool.label}
                 >
@@ -239,7 +257,8 @@ export function Topbar() {
               className="px-2 py-1 rounded-lg bg-[var(--muted)] hover:bg-gray-200/80 dark:hover:bg-gray-800 text-[10px] font-extrabold text-[var(--foreground)] border border-[var(--sidebar-border)] transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
               title="Đổi ngôn ngữ ứng dụng / Switch App Language"
             >
-              <span>{language === "vi" ? "🇻🇳 VI" : "🇬🇧 EN"}</span>
+              <FlagIcon country={language === "vi" ? "VN" : "GB"} size={12} />
+              <span>{language === "vi" ? "VI" : "EN"}</span>
             </button>
           )}
 

@@ -1,6 +1,6 @@
-import { PLATFORMS } from './platforms';
-import { POST_TYPE } from './postTypes';
-import { VALIDATION_RULES } from './platformValidation.constants';
+import { PLATFORMS } from './platforms.js';
+import { POST_TYPE } from './postTypes.js';
+import { VALIDATION_RULES } from './platformValidation.constants.js';
 
 const graphemeSegmenter = typeof Intl !== 'undefined' && Intl.Segmenter
   ? new Intl.Segmenter('en', { granularity: 'grapheme' })
@@ -106,22 +106,6 @@ export const PLATFORM_CONFIGS = {
     validationRules: {
       _always: [
         VALIDATION_RULES.TIKTOK.MEDIA_REQUIRED
-      ]
-    }
-  },
-  [PLATFORMS.TELEGRAM]: {
-    id: PLATFORMS.TELEGRAM,
-    name: 'Telegram',
-    defaultType: 'post',
-    supportedTypes: [
-      { id: 'post', label: 'Channel Post' }
-    ],
-    getPostType: (subType, hasMedia, isVideo) => {
-      return (hasMedia && isVideo) ? POST_TYPE.VIDEO : POST_TYPE.IMAGE;
-    },
-    validationRules: {
-      _always: [
-        VALIDATION_RULES.TELEGRAM.CAPTION_MAX_LIMIT
       ]
     }
   },

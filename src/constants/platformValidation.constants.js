@@ -34,10 +34,6 @@ export const PLATFORM_LIMIT_THRESHOLDS = {
     TITLE_MAX_LENGTH: 100,
     SHORT_MAX_DURATION: 180
   },
-  TELEGRAM: {
-    MEDIA_CAPTION_MAX_LENGTH: 1024,
-    TEXT_CAPTION_MAX_LENGTH: 4096
-  },
   THREADS: {
     POST_MAX_LENGTH: 500
   },
@@ -66,13 +62,13 @@ export const isHorizontalOrSquareVideo = (videoWidth, videoHeight) => isVideoDim
 export const PLATFORM_VALIDATION_MESSAGES = {
   FACEBOOK: {
     ALBUM_MIN_MEDIA: `Facebook Album -> Add at least ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.ALBUM_MIN_MEDIA} images.`,
-    REEL_MEDIA_REQUIRED: "Reel -> Add at least 1 video.",
-    REEL_MUST_BE_VIDEO: "Facebook Reel must be a video file.",
-    REEL_DURATION_RANGE: (duration) => `Facebook Reels must be between ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MIN_DURATION} and ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MAX_DURATION} seconds. (Current: ${Number(duration).toFixed(1)}s)`,
-    REEL_MUST_BE_VERTICAL: "Facebook Reels must be vertical (9:16 aspect ratio). Current ratio is horizontal or square.",
-    STORY_MEDIA_REQUIRED: "Auto publish (story) -> Add at least 1 image or video.",
-    STORY_MAX_DURATION: (duration) => `Facebook Story videos should be ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.STORY_MAX_DURATION} seconds or less. (Current: ${Number(duration).toFixed(1)}s)`,
-    STORY_MUST_BE_VERTICAL: "Facebook Story videos should be vertical (9:16 aspect ratio)."
+    REEL_MEDIA_REQUIRED: "Facebook Reels require a video file.",
+    REEL_MUST_BE_VIDEO: "Facebook Reels require a video file.",
+    REEL_DURATION_RANGE: (duration) => `Facebook Reels duration must be between ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MIN_DURATION} and ${PLATFORM_LIMIT_THRESHOLDS.FACEBOOK.REEL_MAX_DURATION} seconds (Current: ${Number(duration).toFixed(1)}s).`,
+    REEL_MUST_BE_VERTICAL: "Facebook Reels must be vertical (aspect ratio 9:16).",
+    STORY_MEDIA_REQUIRED: "Facebook Stories require a photo or video file.",
+    STORY_MAX_DURATION: (duration) => `Facebook Story videos must be 60 seconds or less (Current: ${Number(duration).toFixed(1)}s).`,
+    STORY_MUST_BE_VERTICAL: "Facebook Story videos must be vertical (aspect ratio 9:16)."
   },
 
   INSTAGRAM: {
@@ -86,8 +82,8 @@ export const PLATFORM_VALIDATION_MESSAGES = {
   },
 
   YOUTUBE: {
-    MEDIA_REQUIRED: "YouTube -> Add at least 1 video.",
-    MUST_BE_VIDEO: "YouTube publication must be a video file.",
+    MEDIA_REQUIRED: "YouTube uploads require a video file.",
+    MUST_BE_VIDEO: "YouTube uploads require a video file.",
     TITLE_REQUIRED_AND_INVALID: `Video or short title is required and must be shorter than ${PLATFORM_LIMIT_THRESHOLDS.YOUTUBE.TITLE_MAX_LENGTH} characters. The characters < or > are not allowed.`,
     AUDIENCE_REQUIRED: "It is necessary to select the audience of the video.",
     SHORT_DURATION_EXCEEDED: (duration) => `Short \u2192 Video length can't exceed ${PLATFORM_LIMIT_THRESHOLDS.YOUTUBE.SHORT_MAX_DURATION} seconds. These videos don't meet the requirements: #1 (${Number(duration).toFixed(1)}s).`,
@@ -95,14 +91,7 @@ export const PLATFORM_VALIDATION_MESSAGES = {
   },
 
   TIKTOK: {
-    MEDIA_REQUIRED: "TikTok -> Add at least 1 image or video."
-  },
-
-  TELEGRAM: {
-    CAPTION_MAX_LIMIT: (hasMedia, count) => {
-      const limit = hasMedia ? PLATFORM_LIMIT_THRESHOLDS.TELEGRAM.MEDIA_CAPTION_MAX_LENGTH : PLATFORM_LIMIT_THRESHOLDS.TELEGRAM.TEXT_CAPTION_MAX_LENGTH;
-      return `Telegram post caption with ${hasMedia ? 'media' : 'text only'} must be ${limit} characters or less. (Current: ${count})`;
-    }
+    MEDIA_REQUIRED: "TikTok posts require a video file."
   },
 
   THREADS: {
@@ -208,9 +197,9 @@ export const VALIDATION_RULES = {
       message: () => PLATFORM_VALIDATION_MESSAGES.YOUTUBE.MUST_BE_VIDEO
     },
     TITLE_REQUIRED_AND_INVALID: {
-      check: ({ caption }) => {
-        if (!caption || !caption.trim()) return true;
-        return caption.length > PLATFORM_LIMIT_THRESHOLDS.YOUTUBE.TITLE_MAX_LENGTH || /[<>]/.test(caption);
+      check: ({ youtubeTitle }) => {
+        if (!youtubeTitle || !youtubeTitle.trim()) return true;
+        return youtubeTitle.length > PLATFORM_LIMIT_THRESHOLDS.YOUTUBE.TITLE_MAX_LENGTH || /[<>]/.test(youtubeTitle);
       },
       message: () => PLATFORM_VALIDATION_MESSAGES.YOUTUBE.TITLE_REQUIRED_AND_INVALID
     },
@@ -232,16 +221,6 @@ export const VALIDATION_RULES = {
     MEDIA_REQUIRED: {
       check: ({ hasMedia }) => !hasMedia,
       message: () => PLATFORM_VALIDATION_MESSAGES.TIKTOK.MEDIA_REQUIRED
-    }
-  },
-
-  TELEGRAM: {
-    CAPTION_MAX_LIMIT: {
-      check: ({ caption, hasMedia }) => {
-        const limit = hasMedia ? PLATFORM_LIMIT_THRESHOLDS.TELEGRAM.MEDIA_CAPTION_MAX_LENGTH : PLATFORM_LIMIT_THRESHOLDS.TELEGRAM.TEXT_CAPTION_MAX_LENGTH;
-        return caption && caption.length > limit;
-      },
-      message: ({ caption, hasMedia }) => PLATFORM_VALIDATION_MESSAGES.TELEGRAM.CAPTION_MAX_LIMIT(hasMedia, caption ? caption.length : 0)
     }
   },
 

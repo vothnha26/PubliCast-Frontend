@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { 
-  Search, RefreshCw, Youtube, Facebook, Instagram, Filter, MoreHorizontal, 
+  Search, RefreshCw, Youtube, Facebook, Instagram, Filter, MoreHorizontal,
   Loader2, MessageSquare, AlertCircle, EyeOff, CheckCircle, ExternalLink, Check,
-  Settings, Sparkles, Trash2, Plus
+  Settings, Sparkles, Trash2, Plus, ArrowLeft
 } from "lucide-react";
 import { useFilters } from "../../hooks/useFilters";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -25,6 +25,7 @@ import { PostsGridSidebar } from "../../components/inbox/PostsGridSidebar";
 import { ListeningEmptyState } from "../../components/inbox/ListeningEmptyState";
 import { ThreadDetailView } from "../../components/inbox/ThreadDetailView";
 import { HelpCircle, Languages } from "lucide-react";
+import { inboxStrategyFactory } from "../../services/strategies/inbox/inboxStrategy.factory";
 
 export function InboxPage() {
   const { t, i18n } = useTranslation(["manage", "common"]);
@@ -57,6 +58,12 @@ export function InboxPage() {
   const [fetchedPosts, setFetchedPosts] = useState([]);
   const [inboxData, setInboxData] = useState({ data: [], meta: {} });
   const [activeConv, setActiveConv] = useState(null);
+  // Mobile-only master/detail toggle for BY_POST mode — unlike ListView's
+  // activeConv (nullable, doubles as the selection state), activePostId
+  // below always has a value (falls back to postsList[0]), so there's no
+  // natural "nothing selected yet" signal to hide/show the grid vs. detail
+  // panel on a narrow viewport. This is purely a UI toggle, not data state.
+  const [mobileShowPostDetail, setMobileShowPostDetail] = useState(false);
   const [thread, setThread] = useState([]);
   const [videoContext, setVideoContext] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +79,10 @@ export function InboxPage() {
 
   const inboxRequestIdRef = useRef(0);
   const threadRequestIdRef = useRef(0);
+  // Tracks whether the first post was auto-selected on initial load —
+  // reset whenever the list filter changes so the new first post gets
+  // highlighted automatically.
+  const autoSelectedFirstRef = useRef(false);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
 
   // Auto-Reply States
@@ -169,6 +180,9 @@ export function InboxPage() {
   };
 
   useEffect(() => {
+    // Reset auto-selection so the first post of the new filter/platform/tab
+    // is automatically shown after the list reloads.
+    autoSelectedFirstRef.current = false;
     fetchInbox();
     fetchPosts();
   }, [listQueryParamsString, activeBrand]);
@@ -478,41 +492,17 @@ export function InboxPage() {
   // Derive unique posts for 'by_post' view (Combining all published channel posts + synced inbox items)
   const postsList = useMemo(() => {
     const postsMap = new Map();
+    const strategy = inboxStrategyFactory.getStrategy(platformFilter);
 
     // 1. Add all channel / DB posts (including 0 comments)
     if (Array.isArray(fetchedPosts)) {
       fetchedPosts.forEach((post, index) => {
-        const key = post.id || post.videoId || post.videoContext?.id;
+        const postPlat = post.platform || platformFilter;
+        const postStrat = inboxStrategyFactory.getStrategy(postPlat);
+        const key = postStrat.getPostKey(post);
         if (key && !postsMap.has(key)) {
-          let thumb = post.thumbnailUrl || post.mediaUrl || post.videoContext?.thumbnailUrl;
-          if (thumb && (thumb.includes('dicebear') || thumb.includes('avataaars') || thumb === post.avatar)) {
-            thumb = null;
-          }
-          let ytId = post.videoContext?.id || post.videoId;
-          if (!ytId && typeof key === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(key)) {
-            ytId = key;
-          }
-          if (!thumb && ytId) {
-            thumb = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
-          }
-
-          postsMap.set(key, {
-            id: key,
-            title: post.title || post.videoContext?.title || `Bài viết #${index + 1}`,
-            thumbnailUrl: thumb,
-            mediaUrl: thumb,
-            videoContext: post.videoContext || {
-              id: key,
-              title: post.title || `Bài viết #${index + 1}`,
-              thumbnailUrl: thumb,
-              channelTitle: post.channelTitle || "Social Channel"
-            },
-            platform: post.platform || null,
-            socialAccountId: post.socialAccountId || null,
-            commentCount: post.commentCount || 0,
-            unreadCount: post.unreadCount || 0,
-            rawItem: post.rawItem || null,
-          });
+          const normalized = postStrat.normalizePost(post, index);
+          postsMap.set(key, normalized);
         }
       });
     }
@@ -520,46 +510,24 @@ export function InboxPage() {
     // 2. Add / Update from synced inbox items
     if (inboxData.data && inboxData.data.length > 0) {
       inboxData.data.forEach((item, index) => {
-        // item.relatedPostId is the actual YouTube video ID a comment/reply
-        // belongs to (set by youtube-comment.strategy.js from
-        // comment.snippet.videoId). item.platformItemId is the comment's
-        // own ID — it happens to also be an 11-char string for YouTube, so
-        // using it here as a stand-in for the video ID silently built a
-        // thumbnail URL for the wrong (nonexistent) video, which then
-        // failed to load and left the sidebar showing a blank placeholder.
-        let ytId = item.videoContext?.id;
-        if (!ytId && item.relatedPostId && typeof item.relatedPostId === 'string' && /^[a-zA-Z0-9_-]{11}$/.test(item.relatedPostId)) {
-          ytId = item.relatedPostId;
-        }
-        const key = ytId || item.relatedPostId || item.platformItemId || item.id;
+        const itemPlat = item.platform || platformFilter;
+        const itemStrat = inboxStrategyFactory.getStrategy(itemPlat);
+        const key = itemStrat.getPostKey(item);
 
-        if (!postsMap.has(key)) {
-          let thumb = item.videoContext?.thumbnailUrl || item.videoContext?.thumbnail || item.mediaUrl || item.thumbnailUrl || item.postMediaUrl;
-          if (thumb && (thumb.includes('dicebear') || thumb.includes('avataaars') || thumb === item.avatar)) {
-            thumb = null;
-          }
-          if (!thumb && ytId) {
-            thumb = `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
-          }
-
-          const title = item.videoContext?.title || `Bài viết #${index + 1} (${item.platform || "Social"})`;
-
-          postsMap.set(key, {
+        if (key && !postsMap.has(key)) {
+          const normalized = itemStrat.normalizePost({
             id: key,
-            title,
-            thumbnailUrl: thumb,
-            mediaUrl: thumb,
-            videoContext: item.videoContext || {
-              id: key,
-              title,
-              thumbnailUrl: thumb,
-              channelTitle: `${item.platform || "Social"} Channel`
-            },
+            title: item.videoContext?.title || `Bài viết #${index + 1} (${item.platform || "Social"})`,
+            thumbnailUrl: itemStrat.buildThumbnail(item),
+            mediaUrl: itemStrat.buildThumbnail(item),
+            videoContext: item.videoContext,
+            platform: item.platform,
             commentCount: 1,
             unreadCount: item.unread ? 1 : 0,
             rawItem: item,
-          });
-        } else {
+          }, index);
+          postsMap.set(key, normalized);
+        } else if (key) {
           const existing = postsMap.get(key);
           existing.commentCount = (existing.commentCount || 0) + 1;
           if (item.unread) existing.unreadCount = (existing.unreadCount || 0) + 1;
@@ -573,7 +541,7 @@ export function InboxPage() {
       const dateB = new Date(b.latestCommentAt || b.publishedAt || b.rawItem?.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [fetchedPosts, inboxData.data]);
+  }, [fetchedPosts, inboxData.data, platformFilter]);
 
   const filteredPostsList = useMemo(() => {
     let result = postsList;
@@ -622,51 +590,74 @@ export function InboxPage() {
     return [];
   }, [thread, currentActiveConv]);
 
-  const handleSelectPost = async (post) => {
-    if (post.rawItem) {
-      setActiveConv(post.rawItem);
-    } else {
-      // No rawItem means this post has no synced InboxItem yet (e.g. a real
-      // published video/post with zero comments, sourced directly from the
-      // platform API rather than from the InboxItem table). id here is the
-      // platform's own post/video ID, not an InboxItem row ID, so
-      // fetchThread's InboxItem.findById(activeConv.id) lookup would always
-      // 404 — isSyntheticPost tells fetchThread to skip that call and rely
-      // on the getCommentsByPost fetch below instead, which already handles
-      // "no comments yet" gracefully.
-      setActiveConv({
-        id: post.id,
-        user: post.title || "Post User",
-        avatar: post.thumbnailUrl,
-        platform: post.platform || "Social Media",
-        socialAccountId: post.socialAccountId || null,
-        videoContext: post.videoContext,
-        unread: post.unreadCount > 0,
-        status: "unresolved",
-        isSyntheticPost: true
-      });
-    }
+  // updateUrl=false for programmatic auto-selections (initial load) —
+  // those should not pollute the URL with a postId the user never explicitly
+  // chose, which would then survive a tab switch and look confusing.
+  const handleSelectPost = async (post, updateUrl = true) => {
+    const postId = post.id || post.videoContext?.id || post.relatedPostId || post.videoId;
+    if (!postId) return;
 
-    if (activeBrand && post.id) {
+    setActiveConv({
+      id: postId,
+      user: post.title || post.videoContext?.title || "Loading...",
+      avatar: post.thumbnailUrl || post.videoContext?.thumbnailUrl,
+      platform: post.platform || platformFilter || "YOUTUBE",
+      socialAccountId: post.socialAccountId || null,
+      videoContext: post.videoContext,
+      unread: (post.unreadCount || 0) > 0,
+      status: "unresolved",
+      isSyntheticPost: true, // Tells fetchThread to rely on getCommentsByPost
+      rawItem: post.rawItem
+    });
+
+    if (activeBrand && postId) {
+      setThreadLoading(true);
       try {
-        const response = await inboxService.getCommentsByPost(activeBrand.id, post.id);
-        // Always set thread (even to []) for the newly-selected post — a
-        // guard that only set it when non-empty left the PREVIOUS post's
-        // comments on screen whenever the new post genuinely had zero
-        // comments, which also meant displayComments' fake-comment fallback
-        // never got a chance to run for real 0-comment posts.
+        const response = await inboxService.getCommentsByPost(activeBrand.id, postId);
         setThread(response?.thread || []);
-        setVideoContext(response?.videoContext || null);
+        if (response?.videoContext) {
+          setVideoContext(response.videoContext);
+          setActiveConv(prev => prev ? {
+            ...prev,
+            user: response.videoContext.title || prev.user,
+            avatar: response.videoContext.thumbnailUrl || prev.avatar,
+            videoContext: response.videoContext
+          } : null);
+        }
       } catch (e) {
         console.error("Failed to fetch comments for post:", e);
+      } finally {
+        setThreadLoading(false);
       }
     }
 
-    // Persist selection in the URL so a reload (or a shared link) restores
-    // the same post instead of silently falling back to postsList[0].
-    // resetPage: false — this isn't a list filter, selecting a post
-    // shouldn't jump the (unrelated) pagination back to page 1.
-    updateFilters({ postId: post.id }, { resetPage: false });
+    // Only write postId into the URL when the user explicitly clicked a post
+    // (updateUrl=true). Auto-selections on initial load use updateUrl=false
+    // to avoid leaking postId into the URL for every page load.
+    if (updateUrl) {
+      updateFilters({ postId }, { resetPage: false });
+    }
+  };
+
+  // Switch view modes and clean up view-specific URL/state side-effects:
+  // - Going to LIST: clear postId from URL (it's a BY_POST concept) and
+  //   reset activeConv so the panel doesn't show a stale post header.
+  // - Going to BY_POST: reset the auto-select guard so the first post in
+  //   the newly-visible grid gets auto-selected immediately.
+  const handleViewModeChange = (newMode) => {
+    setViewMode(newMode);
+    if (newMode === INBOX_VIEW_MODE.LIST) {
+      // Remove postId from URL — postId is meaningless in list view and
+      // would re-trigger the URL-restore effect if the user switches back.
+      updateFilters({ postId: null }, { resetPage: false });
+      setActiveConv(null);
+      setThread([]);
+      setVideoContext(null);
+    } else if (newMode === INBOX_VIEW_MODE.BY_POST) {
+      // Allow auto-select to pick the first post again now that the grid
+      // is visible (the guard was set to true from the last BY_POST visit).
+      autoSelectedFirstRef.current = false;
+    }
   };
 
   // Restore the previously-selected post from the URL once, after the posts
@@ -675,15 +666,35 @@ export function InboxPage() {
   const restoredFromUrlRef = useRef(false);
   useEffect(() => {
     if (restoredFromUrlRef.current) return;
-    if (!filters.postId || postsList.length === 0) return;
+    if (!filters.postId) return;
+    if (loading || postsLoading) return; // Wait until initial loading finishes
 
     restoredFromUrlRef.current = true;
     const matched = postsList.find((p) => p.id === filters.postId);
     if (matched) {
       handleSelectPost(matched);
+    } else if (filters.postId) {
+      // Direct load via URL postId when not yet present in initial list page
+      handleSelectPost({ id: filters.postId, platform: platformFilter });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.postId, postsList]);
+  }, [filters.postId, postsList, loading, postsLoading]);
+
+  // Auto-select the first post in BY_POST view when no postId is in the URL
+  // and no post has been selected yet — without this, the right panel stays
+  // blank (no comments, no video card) until the user manually clicks a post.
+  useEffect(() => {
+    if (viewMode !== INBOX_VIEW_MODE.BY_POST) return;
+    if (filters.postId) return;
+    if (activeConv) return;
+    if (loading || postsLoading) return;
+    if (autoSelectedFirstRef.current) return;
+    if (filteredPostsList.length === 0) return;
+
+    autoSelectedFirstRef.current = true;
+    handleSelectPost(filteredPostsList[0], false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, filters.postId, activeConv, loading, postsLoading, filteredPostsList]);
 
   return (
     <div className="h-[calc(100vh-70px)] w-full flex flex-col overflow-hidden bg-background">
@@ -693,7 +704,7 @@ export function InboxPage() {
         selectedAccountIds={selectedAccountIds}
         onSelectAccounts={handleSelectAccounts}
         viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        onViewModeChange={handleViewModeChange}
         filterType={filters.type || INBOX_ITEM_TYPE.ALL}
         onFilterTypeChange={(type) => updateFilters({ type: type === INBOX_ITEM_TYPE.ALL ? null : type })}
         totalUnread={inboxData.data?.filter(i => i.unread)?.length || 0}
@@ -705,18 +716,25 @@ export function InboxPage() {
       <div className="flex-1 flex overflow-hidden p-4 gap-4 relative">
         {viewMode === INBOX_VIEW_MODE.BY_POST ? (
           <>
-            {/* Left Panel: Posts Grid (Reels/Shorts thumbnails) */}
-            <PostsGridSidebar
-              posts={filteredPostsList}
-              activePostId={activePostId}
-              onSelectPost={handleSelectPost}
-              loading={loading || postsLoading}
-              collapsed={isPostsPanelCollapsed}
-              onToggleCollapsed={setIsPostsPanelCollapsed}
-            />
+            {/* Left Panel: Posts Grid (Reels/Shorts thumbnails) — below md,
+                hidden once the user taps a post (mobileShowPostDetail),
+                same master/detail pattern as ListView's activeConv toggle
+                further down. From md up, both panels always show. */}
+            <div className={`${mobileShowPostDetail ? 'hidden md:block' : 'block'} md:contents`}>
+              <PostsGridSidebar
+                posts={filteredPostsList}
+                activePostId={activePostId}
+                onSelectPost={(post, updateUrl) => { handleSelectPost(post, updateUrl); setMobileShowPostDetail(true); }}
+                loading={loading || postsLoading}
+                collapsed={isPostsPanelCollapsed}
+                onToggleCollapsed={setIsPostsPanelCollapsed}
+              />
+            </div>
 
             {/* Shared Center/Main Area: Video/Post Preview + Thread */}
+            <div className={`${mobileShowPostDetail ? 'flex' : 'hidden md:flex'} flex-1 min-w-0`}>
             <ThreadDetailView
+              onMobileBack={() => setMobileShowPostDetail(false)}
               activeConv={currentActiveConv}
               videoContext={videoContext}
               thread={displayThread}
@@ -732,12 +750,18 @@ export function InboxPage() {
               onPostNewComment={handlePostNewComment}
               isPostingNewComment={isPostingNewComment}
             />
+            </div>
           </>
         ) : (
           /* ListView (Traditional 2-column Inbox) */
           <>
-            {/* Sidebar (List) */}
-            <div className="w-[380px] bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
+            {/* Sidebar (List) — below md, this is a mobile master/detail:
+                hidden once a conversation is selected (ThreadDetailView/the
+                fallback detail pane below takes over full-width instead of
+                squeezing into a fixed 380px column that doesn't fit a
+                375px viewport). From md up, both panels show side by side
+                as before. */}
+            <div className={`w-full md:w-[380px] bg-card rounded-2xl border border-border shadow-sm flex-col overflow-hidden ${activeConv ? 'hidden md:flex' : 'flex'}`}>
               <div className="p-3.5 border-b border-border flex items-center justify-between gap-2">
                  <div className="relative flex-1 group">
                     <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -806,8 +830,10 @@ export function InboxPage() {
               )}
             </div>
 
-            {/* Main Content (Thread) */}
-            <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden relative">
+            {/* Main Content (Thread) — hidden on mobile until a conversation
+                is selected, mirroring the list panel's toggle above, so the
+                two never squeeze side by side on a narrow viewport. */}
+            <div className={`flex-1 bg-card rounded-2xl border border-border shadow-sm flex-col overflow-hidden relative ${activeConv ? 'flex' : 'hidden md:flex'}`}>
                {!activeConv ? (
                  <div className="flex-1 flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-500">
                     <div className="relative mb-8">
@@ -823,6 +849,16 @@ export function InboxPage() {
                  <>
                    <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-card">
                       <div className="flex items-center gap-3">
+                         {/* Mobile-only: returns to the conversation list
+                             instead of showing both panels squeezed side by
+                             side (see the list panel's toggle above). */}
+                         <button
+                           onClick={() => setActiveConv(null)}
+                           className="md:hidden shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+                           aria-label={t("inbox.backToList", "Back")}
+                         >
+                           <ArrowLeft size={18} />
+                         </button>
                          <div className="relative shrink-0 w-10 h-10">
                             {activeConv.participants?.length > 1 ? (
                               <>

@@ -14,11 +14,13 @@ import { StatCard } from "../../components/shared/StatCard";
 import { PostingGoalWidget } from "../../components/shared/PostingGoalWidget";
 import { StreakStatCard } from "../../components/shared/StreakStatCard";
 import { useBrand } from "../../context/BrandContext";
-import socialService from "../../services/social.service";
 import postService from "../../services/post.service";
 import { POST_STATUS } from "../../constants/postStatus";
 import { useTranslation } from "react-i18next";
 import { usePostCreator } from "../../context/PostCreatorContext";
+import { useMetricsQuery } from "../../hooks/queries/useMetricsQuery";
+import { mergeAnalyticsRows } from "../../utils/mergeAnalyticsRows";
+import { toBrandWallClockDate } from "../../utils/brandTimezone";
 
 const PLATFORM_COLORS = {
   YouTube: "#FF0000",
@@ -87,19 +89,14 @@ const PLATFORM_METRICS_STRATEGIES = {
     getVideos: (m) => m.instagramAccount?.mediaCount || 0,
   },
   THREADS: {
-    getSubscribers: (m) => m.instagramAccount?.followersCount || 0,
+    getSubscribers: (m) => m.threadsAccount?.followersCount || 0,
     getViews: (m) => 0,
-    getVideos: (m) => m.instagramAccount?.mediaCount || 0,
+    getVideos: (m) => m.threadsAccount?.mediaCount || 0,
   },
   TIKTOK: {
     getSubscribers: (m) => m.tikTokAccount?.followersCount || 0,
     getViews: (m) => m.tikTokAccount?.likesCount || 0,
     getVideos: (m) => m.tikTokAccount?.videoCount || 0,
-  },
-  TELEGRAM: {
-    getSubscribers: (m) => m.telegramAccount?.memberCount || 0,
-    getViews: (m) => 0,
-    getVideos: (m) => 0,
   }
 };
 
@@ -107,11 +104,19 @@ export function DashboardPage() {
   const { t, i18n } = useTranslation(["dashboard", "common"]);
   const navigate = useNavigate();
   const location = useLocation();
-  const [metrics, setMetrics] = useState([]);
   const [recentPosts, setRecentPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [postsLoading, setPostsLoading] = useState(true);
   const { activeBrand } = useBrand();
   const { openPostCreator } = usePostCreator();
+
+  // Reuses the same cached query as channel-insights tabs (useMetricsQuery) —
+  // previously this fetched socialService.getMetrics directly via its own
+  // useEffect, bypassing React Query's cache entirely, so navigating back to
+  // the Dashboard re-fetched metrics from scratch every time instead of
+  // reading the already-cached result.
+  const { data: metricsData, isLoading: metricsLoading } = useMetricsQuery(activeBrand?.id);
+  const metrics = metricsData || [];
+  const loading = metricsLoading || postsLoading;
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -121,38 +126,25 @@ export function DashboardPage() {
     }
   }, [location, navigate, t]);
 
-  // Một brand mới tạo có onboardingCompleted=false cho tới khi user hoàn tất
-  // setup — đưa họ sang trang onboarding thay vì hiện Dashboard rỗng. Trang
-  // /manage/workplace/new set cờ này true khi Finalize (qua updateBrand).
-  // Dùng cờ thật thay vì so activeBrand.name === "New Workspace" — so tên
-  // vỡ nếu user chọn đặt tên brand thật trùng đúng placeholder mặc định.
-  useEffect(() => {
-    if (activeBrand && !activeBrand.onboardingCompleted) {
-      navigate("/manage/workplace/new", { replace: true });
-    }
-  }, [activeBrand, navigate]);
+
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadPosts = async () => {
       if (!activeBrand) {
-        setLoading(false);
+        setPostsLoading(false);
         return;
       }
       try {
-        setLoading(true);
-        const [metricsRes, postsRes] = await Promise.all([
-          socialService.getMetrics(activeBrand.id),
-          postService.getPosts(activeBrand.id, { limit: 5 })
-        ]);
-        setMetrics(metricsRes || []);
+        setPostsLoading(true);
+        const postsRes = await postService.getPosts(activeBrand.id, { limit: 5 });
         setRecentPosts(postsRes || []);
       } catch (error) {
-        console.error("Failed to load dashboard data:", error);
+        console.error("Failed to load dashboard posts:", error);
       } finally {
-        setLoading(false);
+        setPostsLoading(false);
       }
     };
-    loadData();
+    loadPosts();
   }, [activeBrand]);
 
   const getAggregatedStats = () => {
@@ -215,9 +207,9 @@ export function DashboardPage() {
     const dailyGrowth = {};
 
     metrics.forEach(m => {
-      if (!m.analytics?.[0]?.socialAnalytics?.audienceDemographicsJson) return;
+      const raw = mergeAnalyticsRows(m.analytics);
+      if (!raw) return;
       try {
-        const raw = JSON.parse(m.analytics[0].socialAnalytics.audienceDemographicsJson);
         const growthList = raw.growth || [];
         growthList.forEach(row => {
           let dateStr = "";
@@ -290,7 +282,7 @@ export function DashboardPage() {
         className="flex-1 overflow-y-auto bg-background text-foreground animate-pulse p-6 flex flex-col gap-5"
       >
         {/* Stat Cards Row Skeleton */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {[1, 2, 3, 4, 5].map((n) => (
             <div key={n} className="bg-card p-6 rounded-2xl border border-border shadow-sm h-[110px] space-y-3">
               <div className="w-20 h-3 bg-muted rounded" />
@@ -309,8 +301,8 @@ export function DashboardPage() {
         </div>
 
         {/* Two Column Skeleton */}
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm h-[320px] space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm h-[320px] space-y-4">
             <div className="flex justify-between">
               <div className="w-24 h-4 bg-muted/80 rounded" />
               <div className="w-16 h-4 bg-muted/80 rounded" />
@@ -320,7 +312,7 @@ export function DashboardPage() {
             ))}
           </div>
 
-          <div className="col-span-5 flex flex-col gap-6">
+          <div className="lg:col-span-5 flex flex-col gap-6">
             <div className="bg-card border border-border rounded-3xl p-6 shadow-sm h-[200px] space-y-3">
               <div className="w-32 h-4 bg-muted rounded" />
               {[1, 2, 3].map((n) => (
@@ -348,7 +340,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           label={t("stats.totalFollowers")}
           value={stats.subscribers.toLocaleString()}
@@ -398,9 +390,9 @@ export function DashboardPage() {
       </div>
 
       {/* Two Column */}
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Recent Posts Queue (Cột trái) */}
-        <div className="col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm flex flex-col gap-5 min-h-[350px]">
+        <div className="lg:col-span-7 bg-card border border-border rounded-3xl p-6 shadow-sm flex flex-col gap-5 min-h-[350px]">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-foreground uppercase tracking-wider">{t("recentQueue.title")}</span>
             <div className="flex items-center gap-3">
@@ -459,9 +451,9 @@ export function DashboardPage() {
                         </h4>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground font-medium">
-                            {post.scheduledAt 
-                              ? t("recentQueue.scheduledAt", { date: new Date(post.scheduledAt).toLocaleDateString(t("common:langLocale")) }) 
-                              : t("recentQueue.createdAt", { date: new Date(post.createdAt).toLocaleDateString(t("common:langLocale")) })
+                            {post.scheduledAt
+                              ? t("recentQueue.scheduledAt", { date: toBrandWallClockDate(post.scheduledAt, activeBrand?.timezone).toLocaleDateString(t("common:langLocale")) })
+                              : t("recentQueue.createdAt", { date: toBrandWallClockDate(post.createdAt, activeBrand?.timezone).toLocaleDateString(t("common:langLocale")) })
                             }
                           </span>
                           <span className="text-[10px] text-muted-foreground">•</span>
@@ -490,7 +482,7 @@ export function DashboardPage() {
         </div>
 
         {/* Platform Status and Reach (Cột phải) */}
-        <div className="col-span-5 flex flex-col gap-6">
+        <div className="lg:col-span-5 flex flex-col gap-6">
           {/* Posting Goals */}
           {activeBrand && <PostingGoalWidget brandId={activeBrand.id} />}
 

@@ -21,7 +21,7 @@
  *
  * @returns {{ platform: string, platformPostId: string|null }}
  */
-export function resolvePlatformTarget(post) {
+export function resolvePlatformTarget(post, targetSocialAccountId = null) {
   if (!post) return { platform: '', platformPostId: null };
 
   const platforms = Array.isArray(post.platforms)
@@ -32,13 +32,13 @@ export function resolvePlatformTarget(post) {
 
   const firstPlatform = (platforms[0] || post.platform || '').trim().toUpperCase();
 
-  // A map entry is either a legacy plain string id, or the current
-  // { socialAccountId: id } shape — resolve either down to a single id
-  // string, same as getIdForAccount()/getFirstIdForPlatform() server-side.
-  const firstIdFromEntry = (entry) => {
+  const getIdFromEntry = (entry) => {
     if (entry == null) return null;
     if (typeof entry === 'string') return entry;
     if (typeof entry === 'object') {
+      if (targetSocialAccountId && entry[targetSocialAccountId]) {
+        return entry[targetSocialAccountId];
+      }
       const values = Object.values(entry);
       return values.length > 0 ? values[0] : null;
     }
@@ -51,21 +51,16 @@ export function resolvePlatformTarget(post) {
       const parsed = JSON.parse(parsedMap);
       parsedMap = parsed && typeof parsed === 'object' ? parsed : null;
     } catch (_) {
-      // Plain text ID, not JSON — not a per-platform map, so there's no
-      // firstPlatform to key into; treat the whole string as the id itself.
       return { platform: firstPlatform, platformPostId: parsedMap.trim() || null };
     }
   }
 
   let platformPostId = null;
   if (parsedMap && typeof parsedMap === 'object') {
-    platformPostId = firstIdFromEntry(parsedMap[firstPlatform]);
+    platformPostId = getIdFromEntry(parsedMap[firstPlatform]);
     if (platformPostId == null) {
-      // No entry for the platform we resolved from post.platforms — fall
-      // back to whichever platform's id happens to exist, same tolerance
-      // the old code had for mismatched/missing platform metadata.
       for (const entry of Object.values(parsedMap)) {
-        platformPostId = firstIdFromEntry(entry);
+        platformPostId = getIdFromEntry(entry);
         if (platformPostId != null) break;
       }
     }
@@ -74,16 +69,19 @@ export function resolvePlatformTarget(post) {
   return { platform: firstPlatform, platformPostId: platformPostId ? String(platformPostId).trim() : null };
 }
 
-export function getPlatformPostUrl(post) {
+export function getPlatformPostUrl(post, targetSocialAccountId = null) {
   if (!post) return null;
 
   // 1. Direct permalink in metadata/options if available
   const options = typeof post.options === 'string' ? safeJsonParse(post.options) : post.options;
   if (options?.permalinkUrl) return options.permalinkUrl;
   if (post.permalinkUrl) return post.permalinkUrl;
+  if (post.postUrl) return post.postUrl;
+  if (post.permalink) return post.permalink;
+  if (post.url) return post.url;
 
   // 2. Extract platform and platformPostId
-  const { platform: firstPlatform, platformPostId } = resolvePlatformTarget(post);
+  const { platform: firstPlatform, platformPostId } = resolvePlatformTarget(post, targetSocialAccountId);
 
   // 3. Platform-specific URL patterns
   if (platformPostId) {
@@ -106,8 +104,15 @@ export function getPlatformPostUrl(post) {
         return `https://x.com/i/status/${id}`;
       case 'LINKEDIN':
         return `https://www.linkedin.com/feed/update/${id}`;
-      case 'THREADS':
-        return `https://www.threads.net/p/${id}`;
+      case 'THREADS': {
+        if (id.startsWith('http://') || id.startsWith('https://')) return id;
+        const username = post?.accountUsername || post?.username || (typeof post?.options === 'object' ? post.options?.username : null);
+        if (username) {
+          const cleanUser = username.replace(/^@/, '');
+          return `https://www.threads.net/@${cleanUser}/post/${id}`;
+        }
+        return /^\d+$/.test(id) ? `https://www.threads.net/t/${id}` : `https://www.threads.net/p/${id}`;
+      }
       case 'BLUESKY': {
         // platformPostId is the AT URI returned by publishPost
         // (bluesky.service.js: `return { id: result.id }`), shaped
@@ -127,8 +132,6 @@ export function getPlatformPostUrl(post) {
         return `https://www.reddit.com/comments/${id}`;
       case 'TWITCH':
         return `https://www.twitch.tv/videos/${id}`;
-      case 'TELEGRAM':
-        return `https://t.me/${id}`;
       default:
         break;
     }
@@ -147,7 +150,6 @@ export function getPlatformPostUrl(post) {
     case 'BLUESKY': return 'https://bsky.app';
     case 'REDDIT': return 'https://www.reddit.com';
     case 'TWITCH': return 'https://www.twitch.tv';
-    case 'TELEGRAM': return 'https://t.me';
     default: return null;
   }
 }

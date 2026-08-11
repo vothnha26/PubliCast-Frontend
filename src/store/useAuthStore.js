@@ -91,6 +91,16 @@ export const useAuthStore = create((set, get) => ({
       }
       await authService.logout();
     } finally {
+      // Defense against a shared/public machine's next login reading the
+      // previous user's cached channel/post/insight data — the query cache
+      // is in-memory only (no IndexedDB persistence), so this clear() is
+      // the only thing preventing cross-user leakage within the same tab.
+      try {
+        const { queryClient } = await import('../App');
+        queryClient.clear();
+      } catch (qErr) {
+        console.error('Query cache clear error:', qErr);
+      }
       set({ user: null, isAuthenticated: false });
       toast.info('Đã đăng xuất');
     }

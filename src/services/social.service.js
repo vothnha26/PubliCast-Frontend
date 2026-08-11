@@ -19,15 +19,30 @@ class SocialService {
     return data;
   }
 
-  async getGoogleAuthUrl(brandId) {
-    const data = await apiV2.get(`/social/google/url?brandId=${brandId}`);
+  async getGoogleAuthUrl(brandId, frontendOrigin) {
+    const params = new URLSearchParams({ brandId });
+    if (frontendOrigin) params.append('frontendOrigin', frontendOrigin);
+    const data = await apiV2.get(`/social/google/url?${params.toString()}`);
     return data;
   }
 
-  async getMetrics(brandId, params = {}) {
-    const queryParams = new URLSearchParams({ brandId, ...params }).toString();
-    // Timeout 90s vì backend cần sync với các nền tảng (Facebook Smart Sync có thể mất 30-60s)
-    const data = await apiV2.get(`/social/metrics?${queryParams}`, { timeout: 90000 });
+  async getMetrics(brandId) {
+    const queryParams = new URLSearchParams({ brandId }).toString();
+    // DB read only — the backend never calls a platform's live API here
+    // anymore (only the cron scheduler and initial connect do), so this is
+    // fast and needs no extended timeout.
+    const data = await apiV2.get(`/social/metrics?${queryParams}`);
+    return data;
+  }
+
+  /**
+   * Cheap version signal for a brand's metrics — used by socket.js to
+   * reconcile after a reconnect in case a `data_invalidate` event was
+   * missed while disconnected. Not meant for polling.
+   */
+  async getMetricsVersion(brandId) {
+    const queryParams = new URLSearchParams({ brandId }).toString();
+    const data = await apiV2.get(`/social/metrics/version?${queryParams}`);
     return data;
   }
 
@@ -74,7 +89,10 @@ class SocialService {
     return data;
   }
 
-  async getVideoInsights(brandId, videoId) {
+  // Route path kept as-is (public API contract) — method renamed to
+  // getPostInsights: this fetches lifetime insights for one post/video, not
+  // a date-ranged list, so "video" in the old name was misleading.
+  async getPostInsights(brandId, videoId) {
     const url = `/social/youtube/video-insights?brandId=${brandId}&videoId=${videoId}`;
     const data = await apiV2.get(url, { timeout: 30000 });
     return data;
@@ -230,16 +248,6 @@ class SocialService {
     return data;
   }
 
-  async connectTelegramAccount(brandId, botToken, chatId) {
-    const data = await apiV2.post('/social/telegram/connect', { brandId, botToken, chatId });
-    return data;
-  }
-
-  async disconnectTelegramAccount(brandId, socialAccountId = null) {
-    const data = await apiV2.post('/social/telegram/disconnect', { brandId, socialAccountId });
-    return data;
-  }
-
   async reassignSocialAccount(platform, platformAccountId, targetBrandId) {
     const data = await apiV2.post('/social/reassign', { platform, platformAccountId, targetBrandId });
     return data;
@@ -247,6 +255,11 @@ class SocialService {
 
   async setDefaultAccount(brandId, socialAccountId) {
     const data = await apiV2.post('/social/accounts/set-default', { brandId, socialAccountId });
+    return data;
+  }
+
+  async getPostingUsage(brandId) {
+    const data = await apiV2.get(`/social/posting-usage?brandId=${brandId}`);
     return data;
   }
 
